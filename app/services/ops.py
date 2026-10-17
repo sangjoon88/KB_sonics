@@ -16,7 +16,7 @@ from app.models import (POSITIONS, VOTES, AdminLog, AppSetting, Attendance, Club
                         GameRoster, InitialRating, Member, RatingHistory)
 from app.services import balancer, lopsided, rating
 from app.services.stats import last_attended
-from app.timeutil import now_kst
+from app.timeutil import now_kst, today_kst
 
 
 class OpError(Exception):
@@ -415,6 +415,12 @@ def vote(db: Session, s: ClubSession, member: Member, v: str, leave_time: str | 
     return a
 
 
+def _close_voting_on_game_day(s: ClubSession) -> None:
+    """경기 당일 현장 출석 체크/팀 짜기를 시작하면 투표를 닫는다. 미리 눌러본 경우(전날 등)는 그대로 둔다."""
+    if s.status == "open" and today_kst() >= s.date:
+        s.status = "closed"
+
+
 def set_checkin(db: Session, admin: Member, s: ClubSession, member_id: int, checked_in: bool) -> Attendance:
     m = db.get(Member, member_id)
     if m is None:
@@ -429,8 +435,8 @@ def set_checkin(db: Session, admin: Member, s: ClubSession, member_id: int, chec
         if last and (s.date - last).days >= INACTIVE_WEEKS * 7:
             m.sigma = max(m.sigma, (m.sigma + INITIAL_SIGMA) / 2)
     a.checked_in = checked_in
-    if s.status == "open":
-        s.status = "closed"  # 현장 체크가 시작되면 투표 마감
+    if checked_in:
+        _close_voting_on_game_day(s)
     db.commit()
     db.expire(s, ["attendances"])
     return a
@@ -649,8 +655,7 @@ def generate_game1(db: Session, admin: Member, s: ClubSession) -> Game:
     g1.candidates = [[c.team_a, c.team_b] for c in cands]
     g1.candidate_idx = 0
     _write_roster(db, g1, cands[0].team_a, cands[0].team_b)
-    if s.status == "open":
-        s.status = "closed"
+    _close_voting_on_game_day(s)
     log(db, admin, "lineup.generate", f"game:{g1.id}", {"game_no": 1, "n": len(members)})
     db.commit()
     return g1

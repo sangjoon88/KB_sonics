@@ -508,3 +508,15 @@ def test_two_positions_everywhere(client, db):
     # 화면에 select 두 개가 있다
     for url in ("/admin/members", f"/admin/s/{s.id}/checkin"):
         assert 'name="position2"' in client.get(url).text
+
+
+def test_checkin_closes_voting_only_on_game_day(client, db):
+    import datetime as _dt
+    from app.timeutil import today_kst
+    admin = _login_admin(client, db)
+    future = ops.create_session(db, admin, today_kst() + _dt.timedelta(days=1))
+    ops.set_checkin(db, admin, future, admin.id, True)
+    assert future.status == "open" and ops.voting_open(future)       # 전날 미리 눌러봐도 투표 유지
+    today = ops.create_session(db, admin, today_kst())
+    ops.set_checkin(db, admin, today, admin.id, True)
+    assert today.status == "closed"                                   # 당일 체크인 → 투표 마감
