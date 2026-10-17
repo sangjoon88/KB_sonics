@@ -29,3 +29,14 @@
 {% macro place(s, cls='text-stone-600') -%}
 {% if s.location %}<div class="{{ cls }}">📍 {{ s.location }} <a href="https://map.naver.com/p/search/{{ s.location|urlencode }}" target="_blank" rel="noopener" class="text-xs text-sky-700 underline whitespace-nowrap">지도</a></div>{% endif %}
 {%- endmacro %}
+
+{% macro position_selects(main=None, second=None, cls='border border-stone-300 rounded-lg px-2 py-2 bg-white') -%}
+<select name="position" class="{{ cls }}" aria-label="주 포지션">
+  <option value="">주 포지션</option>
+  {% for p, label in [('G','가드'),('F','포워드'),('C','센터')] %}<option value="{{ p }}" {{ 'selected' if main == p }}>주 {{ label }}</option>{% endfor %}
+</select>
+<select name="position2" class="{{ cls }}" aria-label="부 포지션">
+  <option value="">부 포지션 없음</option>
+  {% for p, label in [('G','가드'),('F','포워드'),('C','센터')] %}<option value="{{ p }}" {{ 'selected' if second == p }}>부 {{ label }}</option>{% endfor %}
+</select>
+{%- endmacro %}

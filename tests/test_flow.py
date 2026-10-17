@@ -484,3 +484,27 @@ def test_session_defaults(client, db):
     # API 기본값
     api_s = client.post("/api/sessions", json={"date": "2099-03-08"}).json()
     assert api_s["start_time"] == "08:00" and api_s["location"] == DEFAULT_LOCATION and api_s["vote_deadline"] is None
+
+
+def test_two_positions_everywhere(client, db):
+    import datetime as _dt
+    # 관리자 계정 생성
+    client.post("/setup", data={"token": TOKEN, "name": "주인", "position": "G", "position2": "F",
+                                "height": "180", "weight": "75", "pin": "1234", "pin2": "1234"})
+    owner = db.scalar(select(Member).where(Member.name == "주인"))
+    assert (owner.position, owner.position2, owner.weight_kg) == ("G", "F", 75)
+    # 멤버 1명 추가
+    client.post("/admin/members/new", data={"name": "추가1", "position": "C", "position2": "F", "height": "190"})
+    m = db.scalar(select(Member).where(Member.name == "추가1"))
+    assert (m.position, m.position2, m.height_cm) == ("C", "F", 190)
+    # 주/부가 같으면 부 포지션은 비운다
+    client.post("/admin/members/new", data={"name": "추가2", "position": "G", "position2": "G"})
+    assert db.scalar(select(Member).where(Member.name == "추가2")).position2 is None
+    # 게스트 (운영진 출석 체크 화면)
+    s = ops.create_session(db, owner, _dt.date(2099, 4, 5))
+    client.post(f"/admin/s/{s.id}/guests", data={"name": "손님2", "position": "F", "position2": "C"})
+    g = db.scalar(select(Member).where(Member.name == "손님2"))
+    assert (g.position, g.position2) == ("F", "C")
+    # 화면에 select 두 개가 있다
+    for url in ("/admin/members", f"/admin/s/{s.id}/checkin"):
+        assert 'name="position2"' in client.get(url).text

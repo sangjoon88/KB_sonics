@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls %}
+{% from "_macros.html" import card, btn_cls, position_selects %}
 {% block title %}관리자 계정 생성{% endblock %}
 {% block content %}
 {% call card() %}
@@ -9,13 +9,15 @@
     <input type="hidden" name="token" value="{{ token }}">
     <label class="block"><span class="text-sm font-semibold">이름</span>
       <input name="name" required maxlength="50" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+    <div>
+      <span class="text-sm font-semibold">포지션</span>
+      <div class="mt-1 grid grid-cols-2 gap-3">{{ position_selects(cls='w-full border border-stone-300 rounded-lg px-3 py-2 bg-white') }}</div>
+    </div>
     <div class="grid grid-cols-2 gap-3">
-      <label class="block"><span class="text-sm font-semibold">포지션</span>
-        <select name="position" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2">
-          <option value="">-</option><option value="G">가드</option><option value="F">포워드</option><option value="C">센터</option>
-        </select></label>
       <label class="block"><span class="text-sm font-semibold">키(cm)</span>
         <input name="height" inputmode="numeric" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+      <label class="block"><span class="text-sm font-semibold">몸무게(kg, 선택)</span>
+        <input name="weight" inputmode="numeric" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
     </div>
     <label class="block"><span class="text-sm font-semibold">PIN (숫자 4~6자리)</span>
       <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>

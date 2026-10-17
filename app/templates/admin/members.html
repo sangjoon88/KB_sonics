@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls, pos_badge, pos_badges %}
+{% from "_macros.html" import card, btn_cls, pos_badge, pos_badges, position_selects %}
 {% block title %}멤버 관리{% endblock %}
 {% block content %}
 {% set active = '/admin/members' %}{% include "admin/_nav.html" %}
@@ -11,11 +11,11 @@
 </div>
 
 {% call card() %}
-  <form method="post" action="/admin/members/new" class="flex gap-2">
-    <input name="name" required placeholder="이름 1명 추가" class="flex-1 min-w-0 border border-stone-300 rounded-lg px-3 py-2">
-    <input name="position" placeholder="G/F" class="w-14 border border-stone-300 rounded-lg px-2" title="포지션 (두 개면 G/F)">
-    <input name="height" inputmode="numeric" placeholder="키" class="w-14 border border-stone-300 rounded-lg px-2">
-    <button class="bg-stone-800 text-white rounded-lg px-3">추가</button>
+  <form method="post" action="/admin/members/new" class="grid grid-cols-2 gap-2">
+    <input name="name" required placeholder="이름 1명 추가" class="col-span-2 border border-stone-300 rounded-lg px-3 py-2">
+    {{ position_selects() }}
+    <input name="height" inputmode="numeric" placeholder="키 (cm, 선택)" class="min-w-0 border border-stone-300 rounded-lg px-3 py-2">
+    <button class="bg-stone-800 text-white rounded-lg py-2 font-semibold">추가</button>
   </form>
 {% endcall %}
 

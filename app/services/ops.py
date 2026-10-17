@@ -484,8 +484,8 @@ GUEST_DEFAULT_GRADE = 3
 
 
 def add_guest(db: Session, s: ClubSession, inviter: Member | None, name: str, *, grade: float | None = None,
-              height: int | None = None, position: str | None = None, checked_in: bool = False,
-              by_admin: Member | None = None) -> Attendance:
+              height: int | None = None, position: str | None = None, position2: str | None = None,
+              checked_in: bool = False, by_admin: Member | None = None) -> Attendance:
     """게스트 참석 등록. 같은 이름의 게스트가 예전에 왔으면 그 기록(레이팅)을 이어서 쓴다."""
     name = (name or "").strip()
     if not name:
@@ -512,6 +512,8 @@ def add_guest(db: Session, s: ClubSession, inviter: Member | None, name: str, *,
         g.height_cm = height
     if position:
         g.position = normalize_position(position)
+        p2 = normalize_position(position2) if position2 else None
+        g.position2 = p2 if p2 != g.position else None
     db.flush()
     a = get_attendance(db, s, g.id)
     if a is None:

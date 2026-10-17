@@ -178,11 +178,13 @@ def checkin_toggle(request: Request, sid: int, mid: int, db: Session = Depends(g
 
 @router.post("/s/{sid}/guests")
 def checkin_add_guest(sid: int, name: str = Form(...), grade: str = Form("3"), height: str = Form(""),
-                      position: str = Form(""), db: Session = Depends(get_db), admin=Depends(admin_page)):
+                      position: str = Form(""), position2: str = Form(""),
+                      db: Session = Depends(get_db), admin=Depends(admin_page)):
     s = _session(db, sid)
     try:
         ops.add_guest(db, s, None, name, grade=float(grade or 3), height=ops.parse_height(height),
-                      position=position or None, checked_in=True, by_admin=admin)
+                      position=position or None, position2=position2 or None,
+                      checked_in=True, by_admin=admin)
     except (ValueError, ops.OpError) as e:
         return redirect(f"/admin/s/{sid}/checkin", err=str(e))
     return redirect(f"/admin/s/{sid}/checkin", msg=f"게스트 {name.strip()} 출석 처리")
@@ -350,11 +352,10 @@ def members_page(request: Request, db: Session = Depends(get_db), admin=Depends(
 
 
 @router.post("/members/new")
-def member_new(name: str = Form(...), position: str = Form(""), height: str = Form(""),
-               db: Session = Depends(get_db), admin=Depends(admin_page)):
+def member_new(name: str = Form(...), position: str = Form(""), position2: str = Form(""),
+               height: str = Form(""), db: Session = Depends(get_db), admin=Depends(admin_page)):
     try:
-        main, sub_ = ops.parse_positions(position)
-        ops.create_member(db, admin, name, main, ops.parse_height(height), sub_)
+        ops.create_member(db, admin, name, position or None, ops.parse_height(height), position2 or None)
     except (ValueError, ops.OpError) as e:
         return redirect("/admin/members", err=str(e))
     return redirect("/admin/members", msg=f"{name.strip()} 추가 — 초기 PIN {DEFAULT_PIN} (첫 로그인 때 본인이 변경). 초기 등급 평가도 해주세요.")

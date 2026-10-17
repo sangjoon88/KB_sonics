@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, guest_tag %}
+{% from "_macros.html" import card, guest_tag, position_selects %}
 {% set mine = my_vote.vote if my_vote else None %}
 {% call card() %}
   <div class="text-sm font-semibold mb-2">{{ me.name }}님, 이번 주 오시나요?</div>
@@ -42,14 +42,12 @@
       <form hx-post="/s/{{ s.id }}/guests" hx-target="#vote-box" method="post" action="/s/{{ s.id }}/guests"
             class="mt-2 space-y-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
         <input name="name" required maxlength="50" placeholder="게스트 이름" class="w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
-        <div class="flex gap-2">
+        <div class="grid grid-cols-2 gap-2">
           <select name="grade" class="border border-stone-300 rounded-lg px-2 py-2 bg-white">
-          {% for g, d in [(1,'입문'),(2,'초급'),(3,'중급'),(4,'중상급'),(5,'상급')] %}<option value="{{ g }}" {{ 'selected' if g == 3 }}>{{ g }} {{ d }}</option>{% endfor %}
-        </select>
-          <select name="position" class="border border-stone-300 rounded-lg px-2 py-2 bg-white">
-            <option value="">포지션</option><option value="G">가드</option><option value="F">포워드</option><option value="C">센터</option>
+          {% for g, d in [(1,'입문'),(2,'초급'),(3,'중급'),(4,'중상급'),(5,'상급')] %}<option value="{{ g }}" {{ 'selected' if g == 3 }}>실력 {{ g }} {{ d }}</option>{% endfor %}
           </select>
-          <input name="height" inputmode="numeric" placeholder="키" class="w-16 min-w-0 border border-stone-300 rounded-lg px-2 py-2 bg-white">
+          <input name="height" inputmode="numeric" placeholder="키 (cm)" class="min-w-0 border border-stone-300 rounded-lg px-2 py-2 bg-white">
+          {{ position_selects() }}
         </div>
         <p class="text-xs text-emerald-800">실력은 팀 나누기에만 쓰이고 공개되지 않아요. 모르면 3(중급)으로 두세요.</p>
         <button class="w-full rounded-lg bg-emerald-600 text-white font-bold py-2">게스트 참석 추가</button>

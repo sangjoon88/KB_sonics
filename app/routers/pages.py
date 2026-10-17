@@ -301,15 +301,15 @@ def _vote_box(request: Request, db: Session, s: ClubSession, me: Member, err: st
 
 @router.post("/s/{session_id}/guests")
 def guest_add(request: Request, session_id: int, name: str = Form(...), grade: str = Form("3"),
-              height: str = Form(""), position: str = Form(""), db: Session = Depends(get_db),
-              me=Depends(current_member)):
+              height: str = Form(""), position: str = Form(""), position2: str = Form(""),
+              db: Session = Depends(get_db), me=Depends(current_member)):
     s = _session_or_404(db, session_id)
     if me is None:
         return redirect(f"/s/{s.id}")
     err = None
     try:
         ops.add_guest(db, s, me, name, grade=float(grade or 3), height=ops.parse_height(height),
-                      position=position or None)
+                      position=position or None, position2=position2 or None)
     except (ValueError, ops.OpError) as e:
         err = str(e)
     if request.headers.get("HX-Request"):
@@ -402,8 +402,8 @@ def setup_page(request: Request, token: str = "", db: Session = Depends(get_db))
 
 @router.post("/setup")
 def setup_post(request: Request, token: str = Form(""), name: str = Form(...), position: str = Form(""),
-               height: str = Form(""), pin: str = Form(...), pin2: str = Form(...),
-               db: Session = Depends(get_db)):
+               position2: str = Form(""), height: str = Form(""), weight: str = Form(""),
+               pin: str = Form(...), pin2: str = Form(...), db: Session = Depends(get_db)):
     if not _setup_allowed(db, token):
         raise HTTPException(404)
     err = None
@@ -411,18 +411,23 @@ def setup_post(request: Request, token: str = Form(""), name: str = Form(...), p
         err = "PIN은 숫자 4~6자리"
     elif pin != pin2:
         err = "PIN 확인이 일치하지 않습니다."
+    h = w = None
     try:
         h = ops.parse_height(height)
+        w = ops.parse_weight(weight)
     except ValueError as e:
-        err, h = str(e), None
+        err = str(e)
     if err:
         return render(request, "setup.html", {"token": token, "err": err}, status_code=400)
     m = db.scalar(select(Member).where(Member.name == name.strip()))
     if m is None:
         m = Member(name=name.strip(), mu=25.0)
         db.add(m)
-    m.position, m.position2 = ops.parse_positions(position) if position else (None, None)
+    m.position = ops.normalize_position(position)
+    p2 = ops.normalize_position(position2)
+    m.position2 = p2 if p2 != m.position else None
     m.height_cm = h
+    m.weight_kg = w
     m.is_admin = True
     m.is_owner = True
     m.pin_hash = hash_pin(pin)
