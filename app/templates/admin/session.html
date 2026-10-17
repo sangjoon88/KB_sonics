@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}{{ fmt_session(s) }} 운영{% endblock %}
+{% block content %}
+<a href="/admin" class="text-sm text-stone-500">‹ 경기 목록</a>
+{% call card() %}
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">{{ fmt_session(s) }}</h1>
+      <div class="text-sm text-stone-500">{{ s.location or '장소 미정' }} · {{ STATUS_LABEL[s.status] }}{% if s.vote_deadline %} · 마감 {{ fmt_dt(s.vote_deadline) }}{% endif %}</div>
+    </div>
+    <div class="text-right text-sm">
+      <div>참석 <b>{{ counts.yes }}</b> · 조퇴 {{ counts.early }} · 불참 {{ counts.no }}</div>
+      <div>현장 출석 <b class="text-orange-600">{{ counts.checked }}</b></div>
+    </div>
+  </div>
+  <div class="mt-3 flex gap-2">
+    <input id="vote-url" readonly value="{{ vote_url }}" class="flex-1 min-w-0 text-xs border border-stone-200 rounded-lg px-2 bg-stone-50">
+    <button type="button" class="{{ btn_cls('ghost') }} !py-2 text-sm"
+            onclick="navigator.clipboard.writeText(document.getElementById('vote-url').value).then(()=>this.textContent='복사됨')">링크 복사</button>
+  </div>
+{% endcall %}
+
+<div class="space-y-2">
+  <a href="/admin/s/{{ s.id }}/checkin" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4">
+    <span><b>1. 현장 출석 체크</b><div class="text-xs text-stone-500">투표 안 하고 온 사람 / 빠진 사람 반영</div></span><span>›</span></a>
+
+  <a href="/admin/s/{{ s.id }}/game/1/lineup" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4">
+    <span><b>2. 게임 1 팀 짜기</b><div class="text-xs text-stone-500">{{ '명단 준비됨' if g1 else '아직 없음' }}</div></span><span>›</span></a>
+
+  <a href="/admin/s/{{ s.id }}/game/1/score" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4 {{ 'opacity-50 pointer-events-none' if not g1 }}">
+    <span><b>3. 게임 1 점수</b><div class="text-xs text-stone-500">{% if g1 and g1.status == 'finished' %}{{ g1.score_a }} : {{ g1.score_b }} (탭하여 수정){% else %}경기 후 입력{% endif %}</div></span><span>›</span></a>
+
+  <a href="/admin/s/{{ s.id }}/game/2/{{ 'lineup' if g2 else 'choose' }}" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4 {{ 'opacity-50 pointer-events-none' if not (g1 and g1.status == 'finished') }}">
+    <span><b>4. 게임 2 팀</b><div class="text-xs text-stone-500">{% if g2 %}{{ MODE_LABEL[g2.lineup_mode] }}{% if g1.lopsided %} · 게임1 일방적{% endif %}{% else %}유지 / 재편성 선택{% endif %}</div></span><span>›</span></a>
+
+  <a href="/admin/s/{{ s.id }}/game/2/score" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4 {{ 'opacity-50 pointer-events-none' if not g2 }}">
+    <span><b>5. 게임 2 점수</b><div class="text-xs text-stone-500">{% if g2 and g2.status == 'finished' %}{{ g2.score_a }} : {{ g2.score_b }} (탭하여 수정){% else %}경기 후 입력{% endif %}</div></span><span>›</span></a>
+</div>
+
+<a href="/s/{{ s.id }}/day" class="block {{ btn_cls('ghost') }}">오늘 경기 화면 (멤버용)</a>
+
+{% call card() %}
+  <details>
+    <summary class="font-bold text-sm cursor-pointer">시간·장소 수정</summary>
+    <form method="post" action="/admin/s/{{ s.id }}/info" class="mt-3 space-y-2">
+      <input type="time" name="start_time" value="{{ s.start_time or '08:00' }}" required class="w-full border border-stone-300 rounded-lg px-3 py-2">
+      <input name="location" value="{{ s.location or '' }}" placeholder="장소" class="w-full border border-stone-300 rounded-lg px-3 py-2">
+      <button class="w-full rounded-lg bg-stone-800 text-white py-2 font-semibold">저장</button>
+    </form>
+  </details>
+{% endcall %}
+{% call card() %}
+  <div class="font-bold text-sm mb-2">투표 상태</div>
+  <form method="post" action="/admin/s/{{ s.id }}/status" class="grid grid-cols-3 gap-2">
+    {% for st in ['open','closed','finished'] %}
+    <button name="status" value="{{ st }}" class="rounded-lg py-2 text-sm {{ 'bg-stone-800 text-white' if s.status == st else 'bg-stone-100' }}">{{ STATUS_LABEL[st] }}</button>
+    {% endfor %}
+  </form>
+{% endcall %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% from "_macros.html" import card %}
+{% call card(cls='border-stone-800') %}
+  <details {{ 'open' if proxy_msg or proxy_err }}>
+    <summary class="font-semibold cursor-pointer">{{ '👑' if admin.is_owner else '🛡️' }} 대리 투표 <span class="text-xs font-normal text-stone-500">구두로 참석 의사를 밝힌 멤버</span></summary>
+    {% if proxy_msg %}<div class="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 text-sm">✓ {{ proxy_msg }}</div>{% endif %}
+    {% if proxy_err %}<div class="mt-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{{ proxy_err }}</div>{% endif %}
+    <form hx-post="/s/{{ s.id }}/proxy" hx-target="#proxy-box" method="post" action="/s/{{ s.id }}/proxy" class="mt-3 space-y-2">
+      <select name="member_id" required class="w-full border border-stone-300 rounded-lg px-3 py-3 bg-white">
+        {% for m in proxy_members %}{% set a = proxy_att.get(m.id) %}
+        <option value="{{ m.id }}" {{ 'selected' if last_member_id == m.id }}>{{ m.name }} — {% if a and a.vote %}{{ VOTE_LABEL.get(a.vote, a.vote) }}{% if a.leave_time %} {{ a.leave_time }}{% endif %}{% if a.proxy_by %} (대리){% endif %}{% else %}미투표{% endif %}</option>
+        {% endfor %}
+      </select>
+      <div class="grid grid-cols-3 gap-2">
+        <button name="vote" value="yes" class="rounded-lg bg-orange-600 text-white font-bold py-3">참석</button>
+        <button name="vote" value="no" class="rounded-lg bg-stone-800 text-white font-bold py-3">불참</button>
+        <button name="vote" value="clear" class="rounded-lg bg-white border border-stone-300 font-semibold py-3 text-sm">투표 지우기</button>
+      </div>
+      <div class="flex gap-2">
+        <input type="time" name="leave_time" step="600" class="flex-1 min-w-0 border border-amber-300 rounded-lg px-3 py-2 bg-white">
+        <button name="vote" value="early" class="rounded-lg bg-amber-500 text-white font-bold px-4">조퇴</button>
+      </div>
+      <p class="text-xs text-stone-500">투표 마감 후에도 입력할 수 있어요. 명단에 "대리"로 표시되고, 본인이 직접 투표하면 대리 표시는 사라져요.</p>
+    </form>
+  </details>
+{% endcall %}

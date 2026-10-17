@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}KB SONICS{% endblock %}</title>
+  {% block og %}
+  <meta property="og:title" content="KB SONICS">
+  <meta property="og:description" content="일요일 농구 참석 투표 · 팀 나누기 · 기록">
+  {% endblock %}
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#ea580c">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    .htmx-request.htmx-indicator, .htmx-request .htmx-indicator { opacity: 1 }
+    .htmx-indicator { opacity: 0; transition: opacity .2s }
+  </style>
+</head>
+<body class="bg-stone-100 text-stone-900 min-h-screen pb-24">
+  <header class="bg-orange-600 text-white">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="/" class="font-bold text-lg tracking-tight">🏀 KB SONICS</a>
+      <div class="text-sm flex items-center gap-3">
+        {% if me %}<a href="/me" class="opacity-90">{{ me.name }}</a>{% else %}<a href="/pick" class="underline">이름 선택</a>{% endif %}
+        {% if admin %}<a href="/admin" class="bg-white/20 rounded px-2 py-0.5">{{ '👑 관리자' if admin.is_owner else '🛡️ 운영진' }}</a>{% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto px-4 py-4 space-y-4">
+    {% if msg %}<div class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 text-sm">{{ msg }}</div>{% endif %}
+    {% if err %}<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{{ err }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
+    <div class="max-w-xl mx-auto grid {{ 'grid-cols-4' if admin else 'grid-cols-3' }} text-center text-xs">
+      <a href="/" class="py-3">🏠<div>홈</div></a>
+      <a href="/stats" class="py-3">📊<div>기록</div></a>
+      <a href="/me" class="py-3">🙋<div>내 기록</div></a>
+      {% if admin %}<a href="/admin" class="py-3">🛠️<div>운영진</div></a>{% endif %}
+    </div>
+  </nav>
+</body>
+</html>

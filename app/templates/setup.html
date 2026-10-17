@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}관리자 계정 생성{% endblock %}
+{% block content %}
+{% call card() %}
+  <h1 class="text-xl font-bold">관리자 계정 생성</h1>
+  <p class="text-sm text-stone-600 mt-1">서버를 운영하는 본인 계정입니다. 관리자만 다른 멤버에게 운영진 권한을 줄 수 있어요.<br>생성 후 이 화면은 자동으로 닫힙니다.</p>
+  <form method="post" action="/setup" class="mt-4 space-y-3">
+    <input type="hidden" name="token" value="{{ token }}">
+    <label class="block"><span class="text-sm font-semibold">이름</span>
+      <input name="name" required maxlength="50" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block"><span class="text-sm font-semibold">포지션</span>
+        <select name="position" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2">
+          <option value="">-</option><option value="G">가드</option><option value="F">포워드</option><option value="C">센터</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-semibold">키(cm)</span>
+        <input name="height" inputmode="numeric" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+    </div>
+    <label class="block"><span class="text-sm font-semibold">PIN (숫자 4~6자리)</span>
+      <input name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+    <label class="block"><span class="text-sm font-semibold">PIN 확인</span>
+      <input name="pin2" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2"></label>
+    <button class="w-full {{ btn_cls() }}">관리자 계정 생성</button>
+  </form>
+{% endcall %}
+{% endblock %}

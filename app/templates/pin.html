@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}PIN 변경{% endblock %}
+{% block content %}
+{% call card() %}
+  <h1 class="text-xl font-bold">{{ '내 PIN 정하기' if me.pin_must_change else 'PIN 변경' }}</h1>
+  {% if me.pin_must_change %}
+  <p class="text-sm text-orange-700 mt-1">초기 PIN({{ default_pin }})은 모두가 알고 있어요. 본인만 아는 숫자 4~6자리로 바꿔야 계속할 수 있어요.</p>
+  {% endif %}
+  <form method="post" action="/pin" class="mt-4 space-y-3">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="block"><span class="text-sm font-semibold">새 PIN (숫자 4~6자리)</span>
+      <input name="pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,6}" required autofocus
+             class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3 text-center text-xl tracking-[.4em]"></label>
+    <label class="block"><span class="text-sm font-semibold">새 PIN 확인</span>
+      <input name="pin2" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,6}" required
+             class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3 text-center text-xl tracking-[.4em]"></label>
+    <button class="w-full {{ btn_cls() }}">저장</button>
+  </form>
+{% endcall %}
+{% endblock %}

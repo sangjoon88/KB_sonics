@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}운영진 로그인{% endblock %}
+{% block content %}
+{% call card() %}
+  <h1 class="text-xl font-bold">운영진 로그인</h1>
+  <form method="post" action="/admin/login" class="mt-4 space-y-3">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="block"><span class="text-sm font-semibold">이름</span>
+      <select name="member_id" required class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3">
+        {% for a in admins %}<option value="{{ a.id }}" {{ 'selected' if me and me.id == a.id }}>{{ a.name }}</option>{% endfor %}
+      </select></label>
+    <label class="block"><span class="text-sm font-semibold">PIN</span>
+      <input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4,6}" required autofocus
+             class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3 text-2xl tracking-[.5em] text-center"></label>
+    <button class="w-full {{ btn_cls() }}">로그인</button>
+  </form>
+  <p class="text-xs text-stone-500 mt-3">5회 연속 실패 시 10분간 잠깁니다. 한 번 로그인하면 이 폰에서 90일 유지됩니다.</p>
+{% endcall %}
+{% endblock %}

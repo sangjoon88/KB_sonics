@@ -1,0 +1,27 @@
+{% from "_macros.html" import card, guest_tag %}
+<div class="space-y-4">
+{% include "_preview.html" %}
+{% call card() %}
+  {% set extras = [] %}{% if lists.early %}{% set _ = extras.append('조퇴 ' ~ lists.early|length) %}{% endif %}{% if lists.guests %}{% set _ = extras.append('게스트 ' ~ lists.guests|length) %}{% endif %}
+  <div class="text-sm text-stone-500 mb-2">오는 사람 <b class="text-orange-600 text-base">{{ lists.coming }}</b>명{% if extras %} ({{ extras|join(', ') }} 포함){% endif %}</div>
+  {% for key, label in [('yes','참석'),('early','조퇴'),('no','불참')] %}
+    <div class="{{ 'mt-3' if not loop.first }}">
+      <div class="text-sm font-semibold">{{ label }} <span class="{{ 'text-amber-600' if key == 'early' else 'text-orange-600' }}">{{ lists[key]|length }}</span></div>
+      <div class="mt-1 flex flex-wrap gap-1">
+        {% for a in lists[key] %}
+          {% set cls = 'bg-amber-50 border border-amber-200' if key == 'early' else 'bg-emerald-50 border border-emerald-200' if a.member.is_guest else 'bg-stone-100' %}
+          <span class="text-sm {{ cls }} rounded px-2 py-0.5">{{ a.member.name }}
+            {%- if key == 'early' %} <span class="text-xs text-amber-700">⏰{{ a.leave_time }}</span>{% endif %}
+            {%- if a.member.is_guest %} {{ guest_tag(a.member) }}{% if a.inviter %}<span class="text-[10px] text-stone-500"> · {{ a.inviter.name }}</span>{% endif %}{% endif %}
+            {%- if a.proxy_by %} <span class="text-[10px] text-stone-500" title="{{ a.proxy.name }} 운영진이 대신 입력">· 대리</span>{% endif %}
+          </span>
+        {% else %}<span class="text-xs text-stone-400">-</span>{% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+  {% if lists.walkin %}
+    <div class="mt-3"><div class="text-sm font-semibold">현장 참석 {{ lists.walkin|length }}</div>
+      <div class="mt-1 flex flex-wrap gap-1">{% for a in lists.walkin %}<span class="text-sm bg-stone-100 rounded px-2 py-0.5">{{ a.member.name }}</span>{% endfor %}</div></div>
+  {% endif %}
+{% endcall %}
+</div>

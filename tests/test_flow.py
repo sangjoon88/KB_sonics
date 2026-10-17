@@ -1,0 +1,486 @@
+"""화면/API 통합 테스트: setup, import, rating-setup, 팀 짜기 차단, 하루 흐름."""
+from sqlalchemy import select
+
+from app.auth import hash_pin
+from app.models import Game, Member
+from app.services import ops
+
+TOKEN = "test-setup-token"
+
+
+def _login_as(client, db, m, pin="1234"):
+    """테스트용: PIN이 없는 멤버는 PIN을 부여(변경 완료 상태)하고 이름+PIN으로 로그인."""
+    if not m.pin_hash:
+        m.pin_hash = hash_pin(pin)
+        m.pin_must_change = False
+        db.commit()
+    client.cookies.clear()
+    r = client.post("/pick/pin", data={"member_id": m.id, "pin": pin}, follow_redirects=False)
+    assert r.status_code == 303, r.text
+    return r
+
+
+def _setup_admin(client, name="운영자", pin="1234"):
+    r = client.post("/setup", data={"token": TOKEN, "name": name, "position": "G", "height": "180",
+                                    "pin": pin, "pin2": pin}, follow_redirects=False)
+    assert r.status_code == 303
+    return r
+
+
+def test_setup_closes_after_first_admin(client):
+    assert client.get(f"/setup?token={TOKEN}").status_code == 200
+    assert client.get("/setup?token=wrong").status_code == 404
+    _setup_admin(client)
+    assert client.get(f"/setup?token={TOKEN}").status_code == 404
+    r = client.post("/setup", data={"token": TOKEN, "name": "x", "pin": "1111", "pin2": "1111"})
+    assert r.status_code == 404
+
+
+def test_import_parse():
+    rows = ops.parse_import("김OO,G,175\n이OO,C,188\n박OO\n\n김OO\n최OO,X,170\n정OO,F,99", {"기존"})
+    by = {(r.line_no): r for r in rows}
+    assert by[1].ok and by[1].position == "G" and by[1].height == 175
+    assert by[2].ok and by[2].position == "C"
+    assert by[3].ok and by[3].position is None and by[3].height is None
+    assert by[5].duplicate  # 붙여넣기 안의 중복
+    assert by[6].error      # 잘못된 포지션
+    assert by[7].error      # 잘못된 키
+    assert ops.parse_import("기존", {"기존"})[0].duplicate
+
+
+def test_import_via_screen(client, db):
+    _setup_admin(client)
+    r = client.post("/admin/members/import", data={"text": "가,G,175\n나\n운영자"})
+    assert "중복" in r.text
+    client.post("/admin/members/import", data={"text": "가,G,175\n나\n운영자", "commit": "1"})
+    names = set(db.scalars(select(Member.name)).all())
+    assert names == {"운영자", "가", "나"}
+
+
+def test_rating_setup_average_and_disagree(db):
+    admins = [Member(name=f"a{i}", is_admin=True) for i in range(3)]
+    target = [Member(name="t1"), Member(name="t2")]
+    db.add_all(admins + target)
+    db.commit()
+    ops.save_my_grades(db, admins[0], {target[0].id: 3, target[1].id: 2})
+    ops.save_my_grades(db, admins[1], {target[0].id: 4, target[1].id: 4})
+    ops.save_my_grades(db, admins[2], {target[0].id: 4, target[1].id: 3})
+    rows = {r.member.name: r for r in ops.grade_rows(db, admins[0])}
+    assert rows["t1"].avg == round(11 / 3, 2) and rows["t1"].disagree is False
+    assert rows["t2"].avg == 3.0 and rows["t2"].disagree is True
+    ops.confirm_grades(db, admins[0], {target[0].id: rows["t1"].avg})
+    assert target[0].initial_grade == 3.67
+    assert target[0].mu == 13 + 4 * 3.67
+
+
+def _login_admin(client, db):
+    _setup_admin(client)
+    return db.scalar(select(Member).where(Member.name == "운영자"))
+
+
+def test_team_api_rejected_before_confirm(client, db):
+    admin = _login_admin(client, db)
+    members = [Member(name=f"p{i}", position="GFC"[i % 3], height_cm=170 + i) for i in range(11)]
+    db.add_all(members)
+    db.commit()
+    s = ops.create_session(db, admin, __import__("datetime").date(2026, 10, 18))
+    for m in [admin, *members]:
+        ops.set_checkin(db, admin, s, m.id, True)
+    r = client.post(f"/api/sessions/{s.id}/games/1/lineup")
+    assert r.status_code == 400 and "미확정" in r.json()["detail"]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *members]})
+    r = client.post(f"/api/sessions/{s.id}/games/1/lineup")
+    assert r.status_code == 200
+    body = r.json()
+    assert sorted([len(body["team_a"]), len(body["team_b"])]) == [6, 6]
+
+
+def test_api_requires_admin(client):
+    assert client.post("/api/sessions", json={}).status_code == 401
+    assert client.get("/admin", follow_redirects=False).status_code == 303
+
+
+def test_full_sunday_flow(client, db):
+    admin = _login_admin(client, db)
+    rnd = __import__("random").Random(3)
+    members = [Member(name=f"p{i}", position="GFC"[i % 3], height_cm=rnd.randint(168, 192)) for i in range(11)]
+    db.add_all(members)
+    db.commit()
+    everyone = [admin, *members]
+    ops.confirm_grades(db, admin, {m.id: float(1 + i % 5) for i, m in enumerate(everyone)})
+
+    r = client.post("/admin/sessions", data={"session_date": "2026-10-18", "location": "체육관"},
+                    follow_redirects=False)
+    sid = int(r.headers["location"].split("/admin/s/")[1].split("?")[0])
+
+    # 멤버 투표 (본인 쿠키로)
+    voter = members[0]
+    from app.auth import set_member_cookie  # noqa: F401
+    _login_as(client, db, voter)
+    r = client.post(f"/s/{sid}/vote", data={"vote": "yes"}, headers={"HX-Request": "true"})
+    assert r.status_code == 200 and "참석" in r.text
+    # 다른 멤버 사칭 API 투표는 거부
+    assert client.put(f"/api/sessions/{sid}/vote", json={"member_id": members[1].id, "vote": "yes"}).status_code == 403
+
+    # 다른 사람으로 바꾸면 운영진 로그인도 풀린다 → 관리자 이름 + PIN으로 다시 선택
+    assert client.get("/admin", follow_redirects=False).status_code == 303
+    client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234", "next": "/"})
+    for m in everyone:
+        client.post(f"/admin/s/{sid}/checkin/{m.id}")
+    assert client.get(f"/admin/s/{sid}/checkin").status_code == 200
+
+    client.post(f"/admin/s/{sid}/game/1/generate")
+    page = client.get(f"/admin/s/{sid}/game/1/lineup")
+    assert "다시 섞기" in page.text
+    client.post(f"/admin/s/{sid}/game/1/next", headers={"HX-Request": "true"})
+    g1 = db.scalar(select(Game).where(Game.session_id == sid, Game.game_no == 1))
+    assert g1.candidate_idx == 1
+    moved_id = g1.roster[0].member_id
+    side_before = g1.roster[0].side
+    client.post(f"/admin/s/{sid}/game/1/move/{moved_id}", headers={"HX-Request": "true"})
+    db.expire_all()
+    assert next(r.side for r in g1.roster if r.member_id == moved_id) != side_before
+    client.post(f"/admin/s/{sid}/game/1/move/{moved_id}")
+
+    r = client.post(f"/admin/s/{sid}/game/1/score", data={"score_a": 50, "score_b": 20}, follow_redirects=False)
+    assert "/game/2/choose" in r.headers["location"]
+    assert "재편성 권장" in client.get(f"/admin/s/{sid}/game/2/choose").text
+
+    client.post(f"/admin/s/{sid}/game/2/choose", data={"mode": "reshuffled"})
+    g2 = db.scalar(select(Game).where(Game.session_id == sid, Game.game_no == 2))
+    assert g2.lineup_mode == "reshuffled"
+    from app.services.balancer import swaps_vs
+    g1_sides = {r.member_id: r.side for r in g1.roster}
+    assert swaps_vs([r.member_id for r in g2.roster if r.side == "A"],
+                    [r.member_id for r in g2.roster if r.side == "B"], g1_sides) >= 2
+
+    client.post(f"/admin/s/{sid}/game/2/score", data={"score_a": 33, "score_b": 31})
+    # 게임 1 점수 수정 → 재계산
+    client.post(f"/admin/s/{sid}/game/1/score", data={"score_a": 40, "score_b": 38})
+    db.expire_all()
+    assert g1.score_a == 40 and g1.lopsided is False
+
+    day = client.get(f"/s/{sid}/day")
+    assert day.status_code == 200 and "게임 2" in day.text
+    assert "mu" not in client.get(f"/s/{sid}/day/partial").text
+
+    stats = client.get("/api/stats?season=2026").json()
+    assert {s["name"] for s in stats} >= {"운영자", "p0"}
+    assert all("mu" not in s for s in stats)
+    assert client.get("/stats").status_code == 200
+    ratings_page = client.get("/admin/ratings").text
+    assert "신뢰도" in ratings_page and "<th>mu</th>" not in ratings_page
+    assert "grade" in client.get("/api/admin/ratings").json()[0]
+    assert "팀 평균 실력" in client.get(f"/admin/s/{sid}/game/2/lineup").text
+    assert client.get("/admin/logs").status_code == 200
+    assert client.get("/admin/rating-setup").status_code == 200
+    assert client.get("/admin/members").status_code == 200
+    assert client.get("/me").status_code == 200
+
+
+def test_pin_lockout(client, db):
+    m = Member(name="관리", is_admin=True, pin_hash=hash_pin("1234"))
+    db.add(m)
+    db.commit()
+    for _ in range(5):
+        r = client.post("/admin/login", data={"member_id": m.id, "pin": "0000"}, follow_redirects=False)
+    assert m.pin_locked_until is not None
+    r = client.post("/admin/login", data={"member_id": m.id, "pin": "1234"}, follow_redirects=False)
+    assert "/admin/login" in r.headers["location"]  # 잠금 중에는 올바른 PIN도 거부
+
+
+def test_new_member_default_pin_flow(client, db):
+    admin = _login_admin(client, db)
+    m = ops.create_member(db, admin, "신입")
+    assert m.pin_must_change and m.position is None
+    client.cookies.clear()
+    r = client.post("/pick", data={"member_id": m.id, "next": "/"})
+    assert "초기 PIN" in r.text and "1234" in r.text
+    r = client.post("/pick/pin", data={"member_id": m.id, "pin": "1234"}, follow_redirects=False)
+    assert r.headers["location"].startswith("/pin")
+    # PIN을 바꾸기 전에는 다른 화면으로 못 간다
+    assert client.get("/", follow_redirects=False).headers["location"].startswith("/pin")
+    # 1234 그대로는 안 됨
+    r = client.post("/pin", data={"pin": "1234", "pin2": "1234", "next": "/"})
+    assert r.status_code == 400 and "다른 번호" in r.text
+    r = client.post("/pin", data={"pin": "2580", "pin2": "2580", "next": "/"}, follow_redirects=False)
+    assert r.headers["location"].startswith("/profile")       # 첫 로그인: 다음은 내 정보 입력
+    assert client.get("/", follow_redirects=False).headers["location"].startswith("/profile")
+    # 주 포지션·키 필수, 부 포지션·몸무게 선택
+    r = client.post("/profile", data={"position2": "F", "height": "180"}, follow_redirects=False)
+    assert "err=" in r.headers["location"]
+    client.post("/profile", data={"position": "G", "position2": "F", "height": "180", "weight": "72"})
+    db.refresh(m)
+    assert (m.position, m.position2, m.height_cm, m.weight_kg, m.pin_must_change) == ("G", "F", 180, 72, False)
+    assert client.get("/", follow_redirects=False).status_code == 200
+    # 이제 1234로는 로그인 불가, 새 PIN으로 가능
+    client.cookies.clear()
+    assert client.post("/pick/pin", data={"member_id": m.id, "pin": "1234"}).status_code == 400
+    assert client.post("/pick/pin", data={"member_id": m.id, "pin": "2580"}, follow_redirects=False).status_code == 303
+    # 운영진이 초기화하면 다시 1234 + 변경 강제
+    ops.reset_pin(db, admin, m)
+    client.cookies.clear()
+    r = client.post("/pick/pin", data={"member_id": m.id, "pin": "1234"}, follow_redirects=False)
+    assert r.headers["location"].startswith("/pin")
+
+
+def test_import_two_positions(db):
+    rows = ops.parse_import("가,G/F,175\n나,센터,190\n다,C/C\n라,G/X", set())
+    assert (rows[0].position, rows[0].position2) == ("G", "F")
+    assert (rows[1].position, rows[1].position2) == ("C", None)
+    assert (rows[2].position, rows[2].position2) == ("C", None)
+    assert rows[3].error
+
+
+def test_weight_private(client, db):
+    admin = _login_admin(client, db)
+    m = ops.create_member(db, admin, "몸무게", "G", 175)
+    ops.update_member(db, admin, m, weight=80)
+    assert all("weight_kg" not in x for x in client.get("/api/members").json())
+    assert "80" in client.get("/admin/members").text
+
+
+def test_first_visit_requires_name(client, db):
+    _setup_admin(client)
+    client.cookies.clear()
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/pick")
+
+
+def test_picking_admin_name_requires_pin(client, db):
+    admin = _login_admin(client, db)
+    client.cookies.clear()
+    r = client.post("/pick", data={"member_id": admin.id, "next": "/"}, follow_redirects=False)
+    assert r.status_code == 200 and "PIN" in r.text and "관리자" in r.text   # 쿠키 없이 PIN 화면
+    assert "bc_member" not in r.cookies
+    r = client.post("/pick/pin", data={"member_id": admin.id, "pin": "9999"}, follow_redirects=False)
+    assert r.status_code == 400 and "틀렸습니다" in r.text
+    r = client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert client.get("/admin", follow_redirects=False).status_code == 200  # 운영진 로그인까지 한 번에
+
+
+def test_only_owner_manages_staff(client, db):
+    owner = _login_admin(client, db)
+    assert owner.is_owner
+    staff, other = Member(name="스태프"), Member(name="일반")
+    db.add_all([staff, other])
+    db.commit()
+    ops.set_admin_role(db, owner, staff, True)
+    assert staff.is_admin and not staff.is_owner and staff.pin_must_change
+    import pytest
+    with pytest.raises(ops.OpError):
+        ops.set_admin_role(db, staff, other, True)       # 운영진은 지정 불가
+    with pytest.raises(ops.OpError):
+        ops.reset_pin(db, staff, staff)                  # 운영진 PIN 초기화는 관리자만
+    with pytest.raises(ops.OpError):
+        ops.reset_pin(db, staff, owner)
+    ops.reset_pin(db, staff, other)                      # 일반 멤버는 운영진도 초기화 가능
+    with pytest.raises(ops.OpError):
+        ops.set_admin_role(db, owner, owner, False)      # 관리자 권한은 못 바꿈
+    # 운영진 화면에서는 지정 버튼이 안 보인다
+    client.cookies.clear()
+    client.post("/pick/pin", data={"member_id": staff.id, "pin": "1234"})
+    client.post("/pin", data={"pin": "4321", "pin2": "4321"})
+    page = client.get("/admin/members").text
+    assert "🛡️ 운영진 지정" not in page and "관리자만" in page
+    ops.set_admin_role(db, owner, staff, False)
+    assert not staff.is_admin and staff.pin_hash   # 운영진 해제돼도 본인 PIN은 유지
+
+
+def test_early_leave_vote(client, db):
+    admin = _login_admin(client, db)
+    m = Member(name="조퇴맨", position="G", height_cm=175)
+    db.add(m)
+    db.commit()
+    import datetime as _dt
+    s = ops.create_session(db, admin, _dt.date(2099, 1, 4))
+    _login_as(client, db, m)
+    hx = {"HX-Request": "true"}
+    # 시간 없이 조퇴 → 오류 메시지, 저장 안 됨
+    r = client.post(f"/s/{s.id}/vote", data={"vote": "early", "leave_time": ""}, headers=hx)
+    assert "조퇴 시간을 입력" in r.text
+    assert ops.get_attendance(db, s, m.id) is None
+    r = client.post(f"/s/{s.id}/vote", data={"vote": "early", "leave_time": "15:30"}, headers=hx)
+    a = ops.get_attendance(db, s, m.id)
+    assert a.vote == "early" and a.leave_time == "15:30"
+    assert r.headers.get("HX-Trigger") == "voteChanged"
+    live = client.get(f"/s/{s.id}/live").text
+    assert "⏰15:30" in live and "조퇴 1 포함" in live
+    # 참석으로 바꾸면 조퇴 시간은 지워진다
+    client.post(f"/s/{s.id}/vote", data={"vote": "yes", "leave_time": "15:30"}, headers=hx)
+    db.refresh(a)
+    assert a.vote == "yes" and a.leave_time is None
+    # 미정은 더 이상 받지 않는다
+    r = client.post(f"/s/{s.id}/vote", data={"vote": "maybe"}, headers=hx)
+    assert "투표 값" in r.text
+    # API
+    assert client.put(f"/api/sessions/{s.id}/vote", json={"member_id": m.id, "vote": "early"}).status_code == 400
+    r = client.put(f"/api/sessions/{s.id}/vote", json={"member_id": m.id, "vote": "early", "leave_time": "9:05"})
+    assert r.json()["leave_time"] == "09:05"
+
+
+def test_guest_flow(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    members = [Member(name=f"g{i}", position="GFC"[i % 3], height_cm=170 + i) for i in range(10)]
+    db.add_all(members)
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *members]})
+    s = ops.create_session(db, admin, _dt.date(2099, 1, 4))
+    host = members[0]
+    _login_as(client, db, host)
+    hx = {"HX-Request": "true"}
+
+    r = client.post(f"/s/{s.id}/guests", data={"name": "친구A", "grade": "4", "height": "185", "position": "C"}, headers=hx)
+    assert "친구A" in r.text  # 내가 데려오는 게스트
+    assert "게스트 1 포함" in client.get(f"/s/{s.id}/live").text
+    guest = db.scalar(select(Member).where(Member.name == "친구A"))
+    assert guest.is_guest and not guest.is_active and guest.mu == 13 + 4 * 4
+    # 기존 멤버 이름으로는 게스트 등록 불가
+    r = client.post(f"/s/{s.id}/guests", data={"name": "g1"}, headers=hx)
+    assert "이미 멤버" in r.text
+    # 게스트는 이름 선택·멤버 API·기록에서 제외
+    assert "친구A" not in client.get("/pick").text
+    assert all(m["name"] != "친구A" for m in client.get("/api/members").json())
+
+    # 운영진: 현장 게스트 추가 + 팀 짜기에 포함
+    client.cookies.clear()
+    client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"})
+    client.post(f"/admin/s/{s.id}/guests", data={"name": "현장손님", "grade": "2"})
+    for m in [admin, *members]:
+        ops.set_checkin(db, admin, s, m.id, True)
+    ops.set_checkin(db, admin, s, guest.id, True)
+    assert "현장손님" in client.get(f"/admin/s/{s.id}/checkin").text
+    r = client.post(f"/api/sessions/{s.id}/games/1/lineup")
+    assert r.status_code == 200
+    names = {p["name"] for p in r.json()["team_a"] + r.json()["team_b"]}
+    assert {"친구A", "현장손님"} <= names and len(names) == 13
+    # 명단에 들어간 게스트는 빼기 전 오류
+    r = client.post(f"/admin/s/{s.id}/guests/{guest.id}/remove", follow_redirects=False)
+    assert "err=" in r.headers["location"]
+
+    # 경기 후 기록에는 게스트 제외
+    g1 = db.scalar(select(Game).where(Game.session_id == s.id))
+    ops.submit_result(db, admin, g1, 40, 30)
+    assert all(row["name"] not in ("친구A", "현장손님") for row in client.get("/api/stats?season=2099").json())
+
+    # 운영진이 같은 이름으로 멤버 추가 → 정식 멤버로 전환 (레이팅 유지)
+    mu = guest.mu
+    promoted = ops.create_member(db, admin, "친구A")
+    assert promoted.id == guest.id and not promoted.is_guest and promoted.is_active and promoted.mu == mu
+
+
+def test_guest_cancel_only_by_inviter(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    a, b = Member(name="초대자"), Member(name="남")
+    db.add_all([a, b])
+    db.commit()
+    s = ops.create_session(db, admin, _dt.date(2099, 1, 11))
+    att = ops.add_guest(db, s, a, "손님")
+    with __import__("pytest").raises(ops.OpError):
+        ops.remove_guest(db, s, att.member_id, actor=b)
+    ops.remove_guest(db, s, att.member_id, actor=a)
+    assert ops.get_attendance(db, s, att.member_id) is None
+
+
+def test_preview_and_proxy_vote(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    members = [Member(name=f"v{i}", position="GFC"[i % 3], height_cm=170 + i) for i in range(9)]
+    db.add_all(members)
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *members]})
+    s = ops.create_session(db, admin, _dt.date(2099, 2, 1))
+    for m in members[:3]:
+        ops.vote(db, s, m, "yes")
+    assert ops.preview_teams(db, s)["status"] == "few"
+
+    # 운영진 대리 투표 (마감 후에도 가능)
+    s.status = "closed"
+    db.commit()
+    hx = {"HX-Request": "true"}
+    r = client.post(f"/s/{s.id}/proxy", data={"member_id": members[3].id, "vote": "yes"}, headers=hx)
+    assert r.status_code == 200 and r.headers.get("HX-Trigger") == "voteChanged"
+    r = client.post(f"/s/{s.id}/proxy", data={"member_id": members[4].id, "vote": "early", "leave_time": "11:00"}, headers=hx)
+    a = ops.get_attendance(db, s, members[4].id)
+    assert a.vote == "early" and a.leave_time == "11:00" and a.proxy_by == admin.id
+    pv = ops.preview_teams(db, s)
+    assert pv["status"] == "ok" and pv["n"] == 5 and len(pv["a"]) + len(pv["b"]) == 5
+
+    live = client.get(f"/s/{s.id}/live").text
+    assert "예상 팀" in live and "대리" in live and "mu" not in live
+    client.post(f"/s/{s.id}/proxy", data={"member_id": members[3].id, "vote": "clear"}, headers=hx)
+    assert ops.get_attendance(db, s, members[3].id).vote is None
+    # API 대리 투표
+    r = client.put(f"/api/sessions/{s.id}/vote", json={"member_id": members[5].id, "vote": "no"})
+    assert r.json()["proxy"] is True
+
+    # 일반 멤버는 대리 투표 불가
+    _login_as(client, db, members[0])
+    assert client.post(f"/s/{s.id}/proxy", data={"member_id": members[6].id, "vote": "yes"}).status_code == 403
+    # 본인이 직접 투표하면 대리 표시 해제
+    s.status = "open"
+    db.commit()
+    _login_as(client, db, members[4])
+    client.post(f"/s/{s.id}/vote", data={"vote": "yes"}, headers=hx)
+    db.refresh(a)
+    assert a.proxy_by is None
+    # 홈 화면 렌더
+    home = client.get("/").text
+    assert "예상 팀" in home and "시즌" in home
+
+
+def test_rating_setup_lists_only_pending(client, db):
+    admin = _login_admin(client, db)
+    a, b, c = Member(name="평가A"), Member(name="평가B"), Member(name="평가C")
+    db.add_all([a, b, c])
+    db.commit()
+
+    def section(html, start, end):
+        return html.split(start, 1)[1].split(end, 1)[0]
+
+    page = client.get("/admin/rating-setup").text
+    mine = section(page, "① 내 평가", "내 평가 제출")
+    assert all(n in mine for n in ("평가A", "평가B", "평가C")) and "이미 평가" not in mine
+
+    # A, B 평가 제출 → ①에서는 C만 남고, ②에 A, B 확정 대기
+    client.post("/admin/rating-setup/mine", data={f"g_{a.id}": "3", f"g_{b.id}": "4"})
+    page = client.get("/admin/rating-setup").text
+    pending = section(page, "① 내 평가", "이미 평가했거나")
+    assert "평가C" in pending and "평가A" not in pending and "평가B" not in pending
+    confirm = section(page, "② 평균 확인", "명 확정</button>")
+    assert "평가A" in confirm and "평가B" in confirm and "평가C" not in confirm
+
+    # A만 확정 → 확정 대기에서 빠지고 '다시 조정'으로
+    client.post("/admin/rating-setup/confirm", data={f"c_{a.id}": "3"})
+    page = client.get("/admin/rating-setup").text
+    confirm = section(page, "② 평균 확인", "확정된 멤버 다시 조정")
+    assert "평가B" in confirm and "평가A" not in confirm
+    assert "평가A" in page.split("확정된 멤버 다시 조정", 1)[1]
+
+
+def test_session_defaults(client, db):
+    import datetime as _dt
+    from app.config import DEFAULT_LOCATION
+    admin = _login_admin(client, db)
+    r = client.post("/admin/sessions", data={"session_date": "2099-03-01", "start_time": "08:00",
+                                             "location": DEFAULT_LOCATION}, follow_redirects=False)
+    sid = int(r.headers["location"].split("/admin/s/")[1].split("?")[0])
+    s = db.get(__import__("app.models", fromlist=["ClubSession"]).ClubSession, sid)
+    assert s.start_time == "08:00" and s.location == DEFAULT_LOCATION and s.vote_deadline is None
+    assert ops.voting_open(s)
+    # 대시보드 폼에 기본값이 채워져 있다
+    page = client.get("/admin").text
+    assert 'value="08:00"' in page and DEFAULT_LOCATION in page and "vote_deadline" not in page
+    # 투표 화면: 시간·장소·지도 링크
+    vote_page = client.get(f"/s/{sid}").text
+    assert "08:00 시작" in vote_page and "map.naver.com" in vote_page
+    # 시간·장소 수정
+    client.post(f"/admin/s/{sid}/info", data={"start_time": "9:30", "location": "다른 체육관"})
+    db.refresh(s)
+    assert (s.start_time, s.location) == ("09:30", "다른 체육관")
+    # API 기본값
+    api_s = client.post("/api/sessions", json={"date": "2099-03-08"}).json()
+    assert api_s["start_time"] == "08:00" and api_s["location"] == DEFAULT_LOCATION and api_s["vote_deadline"] is None

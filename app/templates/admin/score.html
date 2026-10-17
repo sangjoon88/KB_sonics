@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}게임 {{ game.game_no }} 점수{% endblock %}
+{% block content %}
+<a href="/admin/s/{{ s.id }}" class="text-sm text-stone-500">‹ {{ fmt_date(s.date) }} 운영</a>
+<h1 class="text-xl font-bold">게임 {{ game.game_no }} 점수 {{ '수정' if game.status == 'finished' }}</h1>
+{% if game.status == 'finished' %}<p class="text-xs text-amber-700">수정하면 이 게임 이후 레이팅이 모두 재계산됩니다.</p>{% endif %}
+<form method="post" action="/admin/s/{{ s.id }}/game/{{ game.game_no }}/score" class="space-y-4">
+  <div class="grid grid-cols-2 gap-3">
+    {% for side, names, color, val in [('a', team_a, 'orange', game.score_a), ('b', team_b, 'sky', game.score_b)] %}
+    <label class="block bg-white rounded-xl border-2 border-{{ color }}-300 p-3">
+      <div class="font-bold text-{{ color }}-700">{{ '🟧 A팀' if side == 'a' else '🟦 B팀' }}</div>
+      <input name="score_{{ side }}" type="number" inputmode="numeric" min="0" max="300" required
+             value="{{ val if val is not none else '' }}" {{ 'autofocus' if side == 'a' }}
+             class="mt-2 w-full text-center text-5xl font-black border-0 bg-{{ color }}-50 rounded-lg py-4 focus:ring-2 focus:ring-{{ color }}-400">
+      <div class="mt-2 text-[11px] text-stone-500 leading-tight">{{ names|join(', ') }}</div>
+    </label>
+    {% endfor %}
+  </div>
+  <button class="w-full {{ btn_cls() }} text-lg">저장</button>
+</form>
+{% endblock %}

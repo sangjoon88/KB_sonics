@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}내 정보{% endblock %}
+{% block content %}
+{% call card() %}
+  {% if first %}
+  <h1 class="text-xl font-bold">{{ me.name }}님, 반가워요 👋</h1>
+  <p class="text-sm text-stone-600 mt-1">팀 나누기에 쓰이는 정보예요. 한 번만 입력하면 돼요.</p>
+  {% else %}
+  <h1 class="text-xl font-bold">내 정보 수정</h1>
+  {% endif %}
+  <form method="post" action="/profile" class="mt-4 space-y-5">
+    <input type="hidden" name="next" value="{{ next }}">
+    {% for field, legend, required, current in [('position', '주 포지션', true, me.position), ('position2', '부 포지션 (선택)', false, me.position2)] %}
+    <fieldset>
+      <legend class="text-sm font-semibold mb-2">{{ legend }}</legend>
+      <div class="grid {{ 'grid-cols-3' if required else 'grid-cols-4' }} gap-2">
+        {% if not required %}
+        <label class="border rounded-lg py-3 text-center text-sm has-[:checked]:bg-stone-700 has-[:checked]:text-white has-[:checked]:border-stone-700">
+          <input type="radio" name="{{ field }}" value="" class="sr-only" {{ 'checked' if not current }}>없음</label>
+        {% endif %}
+        {% for p, label in [('G','가드'),('F','포워드'),('C','센터')] %}
+        <label class="border rounded-lg py-3 text-center has-[:checked]:bg-orange-600 has-[:checked]:text-white has-[:checked]:border-orange-600">
+          <input type="radio" name="{{ field }}" value="{{ p }}" class="sr-only" {{ 'required' if required }} {{ 'checked' if current == p }}>{{ label }}
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endfor %}
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block">
+        <span class="text-sm font-semibold">키 (cm)</span>
+        <input name="height" inputmode="numeric" pattern="[0-9]{3}" required placeholder="예: 178" value="{{ me.height_cm or '' }}"
+               class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3 text-lg">
+      </label>
+      <label class="block">
+        <span class="text-sm font-semibold">몸무게 (kg, 선택)</span>
+        <input name="weight" inputmode="numeric" pattern="[0-9]{2,3}" placeholder="예: 72" value="{{ me.weight_kg or '' }}"
+               class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-3 text-lg">
+      </label>
+    </div>
+    <p class="text-xs text-stone-500 -mt-2">몸무게는 본인과 운영진만 볼 수 있어요.</p>
+    <button class="w-full {{ btn_cls() }}">저장</button>
+  </form>
+  {% if first %}<a href="/logout" class="block text-center text-xs text-stone-500 mt-4 underline">내 이름이 아니에요</a>{% endif %}
+{% endcall %}
+{% endblock %}

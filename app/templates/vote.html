@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls, place %}
+{% block title %}{{ fmt_session(s) }} 농구 참석 투표{% endblock %}
+{% block og %}{% include "_og.html" %}{% endblock %}
+{% block content %}
+{% call card() %}
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="text-sm text-stone-500">{{ STATUS_LABEL[s.status] }}{% if s.vote_deadline and s.status == 'open' %} · 마감 {{ fmt_dt(s.vote_deadline) }}{% endif %}</div>
+      <h1 class="text-2xl font-bold">{{ fmt_date(s.date) }} 농구</h1>
+      {% if s.start_time %}<div class="font-semibold text-stone-700">⏰ {{ s.start_time }} 시작</div>{% endif %}
+      {{ place(s) }}
+    </div>
+    {% if admin %}<a href="/admin/s/{{ s.id }}" class="shrink-0 rounded-lg bg-stone-800 text-white text-sm font-semibold px-3 py-2">🛠️ 운영</a>{% endif %}
+  </div>
+{% endcall %}
+<div id="vote-box" class="space-y-4">{% include "_vote_box.html" %}</div>
+{% if admin %}<div id="proxy-box">{% include "_proxy_box.html" %}</div>{% endif %}
+<div id="live" hx-get="/s/{{ s.id }}/live" hx-trigger="every 20s, voteChanged from:body" hx-swap="innerHTML">
+  {% include "_live.html" %}
+</div>
+<a href="/s/{{ s.id }}/day" class="block {{ btn_cls('ghost') }}">오늘 경기 보기</a>
+<p class="text-center text-xs text-stone-500"><a href="/logout" class="underline">{{ me.name }}이(가) 아닌가요?</a></p>
+{% endblock %}

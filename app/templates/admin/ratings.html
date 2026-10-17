@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, pos_badges %}
+{% block title %}레이팅 (비공개){% endblock %}
+{% block content %}
+{% set active = '/admin/ratings' %}{% include "admin/_nav.html" %}
+<h1 class="text-xl font-bold">레이팅 <span class="text-xs font-normal text-red-600">운영진 전용 · 공유 금지</span></h1>
+
+{% call card(cls='text-xs text-stone-600 space-y-1') %}
+  <p><b>실력</b> — 경기 결과로 계속 바뀌는 현재 실력이에요. 초기 등급과 같은 1~5 등급 단위로 보여줘요.</p>
+  <p><b>변화</b> — 초기 등급 대비 얼마나 올랐거나 내려갔는지예요. <span class="text-red-600 font-semibold">±1등급 이상</span>이면 처음 평가가 어긋났을 가능성이 커요. ({{ calib_weeks }}주 뒤 확인 권장)</p>
+  <p><b>신뢰도</b> — 경기를 많이 뛸수록 실력 값이 정확해져요.
+    <span class="text-amber-700">보정 중</span>(0~3경기) ·
+    <span class="text-sky-700">보통</span>(4~11경기) ·
+    <span class="text-emerald-700">안정</span>(12경기~)</p>
+{% endcall %}
+
+{% call card(cls='p-0 overflow-x-auto') %}
+<table class="w-full text-sm">
+  <thead class="bg-stone-50 text-xs text-stone-500">
+    <tr><th class="py-2 text-left pl-3">이름</th><th class="text-left">실력</th><th>초기</th><th>변화</th><th class="pr-3">신뢰도</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    {% set g = grade_of(r.m.mu) %}
+    {% set delta = (r.delta / 4) if r.delta is not none else none %}
+    {% set conf, color = confidence(r.games) %}
+    <tr class="border-t border-stone-100" title="mu {{ '%.2f'|format(r.m.mu) }} · σ {{ '%.2f'|format(r.m.sigma) }}">
+      <td class="py-2 pl-3 whitespace-nowrap">{{ r.m.name }} {{ pos_badges(r.m) }}</td>
+      <td class="min-w-[110px]">
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2 rounded-full bg-stone-100 overflow-hidden">
+            <div class="h-full rounded-full bg-orange-500" style="width: {{ [[(g - 1) / 4 * 100, 0]|max, 100]|min }}%"></div>
+          </div>
+          <span class="font-semibold tabular-nums w-7 text-right">{{ '%.1f'|format(g) }}</span>
+        </div>
+      </td>
+      <td class="text-center tabular-nums text-stone-500">{{ '%.1f'|format(r.m.initial_grade) if r.m.initial_grade is not none else '-' }}</td>
+      <td class="text-center tabular-nums {{ 'text-red-600 font-bold' if delta is not none and (delta >= 1 or delta <= -1) else 'text-emerald-700' if delta is not none and delta > 0.05 else 'text-stone-500' }}">
+        {% if delta is none %}-{% elif delta > 0.05 %}▲{{ '%.1f'|format(delta) }}{% elif delta < -0.05 %}▼{{ '%.1f'|format(-delta) }}{% else %}–{% endif %}
+      </td>
+      <td class="text-center pr-3 whitespace-nowrap"><span class="text-xs rounded-full px-2 py-0.5 bg-{{ color }}-100 text-{{ color }}-700">{{ conf }}</span>
+        <div class="text-[10px] text-stone-400">{{ r.games }}경기</div></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endcall %}
+<p class="text-[11px] text-stone-400">실력 = (mu − 13) ÷ 4. 행을 길게 누르면 원래 값(mu, σ)이 보여요.</p>
+{% endblock %}

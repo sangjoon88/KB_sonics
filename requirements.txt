@@ -1,0 +1,10 @@
+fastapi>=0.115
+jinja2>=3.1
+python-multipart>=0.0.9
+sqlalchemy>=2.0.30
+psycopg[binary]>=3.2
+alembic>=1.13
+openskill>=6.0
+bcrypt>=4.1
+itsdangerous>=2.2
+tzdata>=2024.1

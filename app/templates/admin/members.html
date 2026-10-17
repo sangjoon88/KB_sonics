@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls, pos_badge, pos_badges %}
+{% block title %}멤버 관리{% endblock %}
+{% block content %}
+{% set active = '/admin/members' %}{% include "admin/_nav.html" %}
+<p class="text-xs text-stone-500">새로 등록한 멤버의 초기 PIN은 <b>{{ default_pin }}</b>이에요. 첫 로그인 때 본인이 바꾸고 포지션·키를 입력합니다.
+{% if not admin.is_owner %}<br>운영진 지정·해제와 운영진 PIN 초기화는 관리자만 할 수 있어요.{% endif %}</p>
+<div class="grid grid-cols-2 gap-2">
+  <a href="/admin/members/import" class="{{ btn_cls() }}">📋 일괄 등록</a>
+  <a href="/admin/rating-setup" class="{{ btn_cls('ghost') }}">초기 등급 평가</a>
+</div>
+
+{% call card() %}
+  <form method="post" action="/admin/members/new" class="flex gap-2">
+    <input name="name" required placeholder="이름 1명 추가" class="flex-1 min-w-0 border border-stone-300 rounded-lg px-3 py-2">
+    <input name="position" placeholder="G/F" class="w-14 border border-stone-300 rounded-lg px-2" title="포지션 (두 개면 G/F)">
+    <input name="height" inputmode="numeric" placeholder="키" class="w-14 border border-stone-300 rounded-lg px-2">
+    <button class="bg-stone-800 text-white rounded-lg px-3">추가</button>
+  </form>
+{% endcall %}
+
+<div class="space-y-2">
+{% for m in members %}
+  <details class="bg-white rounded-xl border border-stone-200 {{ 'opacity-50' if not m.is_active }}">
+    <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer list-none">
+      <span class="font-semibold">{{ m.name }}</span> {{ pos_badges(m) }}
+      <span class="text-xs text-stone-500">{{ (m.height_cm ~ 'cm') if m.height_cm else '키?' }}</span>
+      {% if m.initial_grade is none %}<span class="text-[10px] bg-amber-100 text-amber-800 rounded px-1">등급 미확정</span>{% endif %}
+      {% if m.is_owner %}<span class="text-[10px] bg-orange-600 text-white rounded px-1">👑 관리자</span>{% elif m.is_admin %}<span class="text-[10px] bg-stone-800 text-white rounded px-1">🛡️ 운영진</span>{% endif %}
+      {% if not m.is_active %}<span class="text-[10px] bg-stone-200 rounded px-1">비활성</span>{% endif %}
+      {% if m.pin_must_change %}<span class="text-[10px] bg-sky-100 text-sky-800 rounded px-1">첫 로그인 전</span>{% endif %}
+      <span class="ml-auto text-stone-400">✎</span>
+    </summary>
+    <div class="px-4 pb-4 space-y-3">
+      <form method="post" action="/admin/members/{{ m.id }}" class="grid grid-cols-6 gap-2 text-sm">
+        <input name="name" value="{{ m.name }}" class="col-span-6 border border-stone-300 rounded-lg px-3 py-2">
+        <select name="position" class="col-span-3 border border-stone-300 rounded-lg px-2 py-2">
+          <option value="">주 포지션 -</option>
+          {% for p in ['G','F','C'] %}<option value="{{ p }}" {{ 'selected' if m.position == p }}>주 {{ POS_LABEL[p] }}</option>{% endfor %}
+        </select>
+        <select name="position2" class="col-span-3 border border-stone-300 rounded-lg px-2 py-2">
+          <option value="">부 포지션 없음</option>
+          {% for p in ['G','F','C'] %}<option value="{{ p }}" {{ 'selected' if m.position2 == p }}>부 {{ POS_LABEL[p] }}</option>{% endfor %}
+        </select>
+        <input name="height" value="{{ m.height_cm or '' }}" inputmode="numeric" placeholder="키(cm)" class="col-span-2 border border-stone-300 rounded-lg px-2 py-2">
+        <input name="weight" value="{{ m.weight_kg or '' }}" inputmode="numeric" placeholder="몸무게(kg)" class="col-span-2 border border-stone-300 rounded-lg px-2 py-2">
+        <label class="col-span-2 flex items-center gap-1"><input type="checkbox" name="is_active" value="1" {{ 'checked' if m.is_active }}> 활동</label>
+        <button class="col-span-6 bg-stone-800 text-white rounded-lg py-2">저장</button>
+      </form>
+      {% if not m.is_owner %}
+      <div class="flex gap-2 text-sm">
+        {% if admin.is_owner %}
+        <form method="post" action="/admin/members/{{ m.id }}/admin" class="flex-1"
+              onsubmit="return confirm('{{ m.name }} 운영진 {{ '해제' if m.is_admin else '지정' }}?')">
+          <input type="hidden" name="on" value="{{ '' if m.is_admin else '1' }}">
+          <button class="w-full rounded-lg py-2 {{ 'bg-red-50 text-red-700' if m.is_admin else 'bg-stone-100' }}">{{ '운영진 해제' if m.is_admin else '🛡️ 운영진 지정' }}</button>
+        </form>
+        {% endif %}
+        {% if admin.is_owner or not m.is_admin %}
+        <form method="post" action="/admin/members/{{ m.id }}/reset-pin" class="flex-1"
+              onsubmit="return confirm('{{ m.name }}님의 PIN을 {{ default_pin }}(으)로 초기화할까요?')">
+          <button class="w-full rounded-lg py-2 bg-stone-100">PIN {{ default_pin }}로 초기화</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </details>
+{% endfor %}
+</div>
+{% endblock %}

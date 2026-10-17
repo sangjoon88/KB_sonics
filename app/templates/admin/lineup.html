@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}게임 {{ no }} 팀 짜기{% endblock %}
+{% block content %}
+<a href="/admin/s/{{ s.id }}" class="text-sm text-stone-500">‹ {{ fmt_date(s.date) }} 운영</a>
+<div class="flex items-center justify-between">
+  <h1 class="text-xl font-bold">게임 {{ no }} 팀 짜기</h1>
+  <span class="text-xs text-stone-500">출석 {{ checked|length }}명 · {{ BALANCE_MODE_LABELS[mode] }}</span>
+</div>
+{% for e in errors %}<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">⛔ {{ e }}</div>{% endfor %}
+{% for w in warnings %}<div class="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-sm">⚠️ {{ w }}</div>{% endfor %}
+
+{% if no == 1 and (not game or game.status != 'finished') %}
+<form method="post" action="/admin/s/{{ s.id }}/game/1/generate">
+  <button class="w-full {{ btn_cls() }} {{ 'opacity-40' if errors }}" {{ 'disabled' if errors }}>{{ '팀 다시 생성 (출석 변경 반영)' if game else '⚡ 자동으로 팀 짜기' }}</button>
+</form>
+{% endif %}
+{% if no == 2 and game and game.status != 'finished' %}
+<a href="/admin/s/{{ s.id }}/game/2/choose" class="block text-center text-sm underline text-stone-600">유지/재편성 다시 선택</a>
+{% endif %}
+
+<div id="board">
+{% if game %}{% include "admin/_lineup_board.html" %}{% endif %}
+</div>
+{% endblock %}

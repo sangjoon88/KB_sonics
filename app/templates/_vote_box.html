@@ -1,0 +1,62 @@
+{% from "_macros.html" import card, guest_tag %}
+{% set mine = my_vote.vote if my_vote else None %}
+{% call card() %}
+  <div class="text-sm font-semibold mb-2">{{ me.name }}님, 이번 주 오시나요?</div>
+  {% if vote_err %}<div class="mb-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{{ vote_err }}</div>{% endif %}
+  {% if voting_open %}
+  <form hx-post="/s/{{ s.id }}/vote" hx-target="#vote-box" method="post" action="/s/{{ s.id }}/vote">
+    <div class="grid grid-cols-3 gap-2">
+      <button name="vote" value="yes"
+              class="rounded-lg border py-4 text-lg font-bold {{ 'bg-orange-600 border-orange-600 text-white' if mine == 'yes' else 'bg-white border-stone-300' }}">참석</button>
+      <button type="button" onclick="document.getElementById('early-panel').classList.toggle('hidden')"
+              class="rounded-lg border py-4 text-lg font-bold {{ 'bg-amber-500 border-amber-500 text-white' if mine == 'early' else 'bg-white border-stone-300' }}">조퇴{% if mine == 'early' and my_vote.leave_time %}<div class="text-xs font-semibold">{{ my_vote.leave_time }}</div>{% endif %}</button>
+      <button name="vote" value="no"
+              class="rounded-lg border py-4 text-lg font-bold {{ 'bg-stone-800 border-stone-800 text-white' if mine == 'no' else 'bg-white border-stone-300' }}">불참</button>
+    </div>
+    <div id="early-panel" class="{{ '' if mine == 'early' or vote_err else 'hidden' }} mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+      <label class="block text-sm font-semibold text-amber-900">몇 시에 가시나요?</label>
+      <div class="mt-2 flex gap-2">
+        <input type="time" name="leave_time" step="600" value="{{ my_vote.leave_time if my_vote and my_vote.leave_time else '' }}"
+               class="flex-1 min-w-0 border border-amber-300 rounded-lg px-3 py-2 text-lg bg-white">
+        <button name="vote" value="early" class="rounded-lg bg-amber-500 text-white font-bold px-4">조퇴로 투표</button>
+      </div>
+      <p class="mt-1 text-xs text-amber-800">조퇴도 참석 인원에 포함됩니다. 게임 2 팀을 짤 때 참고해요.</p>
+    </div>
+  </form>
+  {% set my_guests = lists.guests|selectattr('guest_of', 'equalto', me.id)|list %}
+  <div class="mt-4 border-t border-stone-100 pt-3">
+    {% if my_guests %}
+    <div class="text-sm font-semibold mb-1">내가 데려오는 게스트</div>
+    <ul class="space-y-1 mb-2">
+      {% for a in my_guests %}
+      <li class="flex items-center justify-between text-sm bg-emerald-50 rounded-lg px-3 py-2">
+        <span>{{ a.member.name }} {{ guest_tag(a.member) }}</span>
+        <button hx-post="/s/{{ s.id }}/guests/{{ a.member_id }}/remove" hx-target="#vote-box"
+                hx-confirm="{{ a.member.name }} 게스트를 취소할까요?" class="text-xs text-red-600 underline">취소</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <details {{ 'open' if vote_err and '게스트' in vote_err }}>
+      <summary class="text-sm text-emerald-700 font-semibold cursor-pointer">＋ 게스트 데려오기</summary>
+      <form hx-post="/s/{{ s.id }}/guests" hx-target="#vote-box" method="post" action="/s/{{ s.id }}/guests"
+            class="mt-2 space-y-2 rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+        <input name="name" required maxlength="50" placeholder="게스트 이름" class="w-full border border-stone-300 rounded-lg px-3 py-2 bg-white">
+        <div class="flex gap-2">
+          <select name="grade" class="border border-stone-300 rounded-lg px-2 py-2 bg-white">
+          {% for g, d in [(1,'입문'),(2,'초급'),(3,'중급'),(4,'중상급'),(5,'상급')] %}<option value="{{ g }}" {{ 'selected' if g == 3 }}>{{ g }} {{ d }}</option>{% endfor %}
+        </select>
+          <select name="position" class="border border-stone-300 rounded-lg px-2 py-2 bg-white">
+            <option value="">포지션</option><option value="G">가드</option><option value="F">포워드</option><option value="C">센터</option>
+          </select>
+          <input name="height" inputmode="numeric" placeholder="키" class="w-16 min-w-0 border border-stone-300 rounded-lg px-2 py-2 bg-white">
+        </div>
+        <p class="text-xs text-emerald-800">실력은 팀 나누기에만 쓰이고 공개되지 않아요. 모르면 3(중급)으로 두세요.</p>
+        <button class="w-full rounded-lg bg-emerald-600 text-white font-bold py-2">게스트 참석 추가</button>
+      </form>
+    </details>
+  </div>
+  {% else %}
+    <p class="text-sm text-stone-600">투표가 마감되었습니다{% if mine %} · 내 투표: <b>{{ VOTE_LABEL.get(mine, mine) }}{% if mine == 'early' and my_vote.leave_time %} {{ my_vote.leave_time }}{% endif %}</b>{% endif %}. 변경은 운영진에게 말해주세요.</p>
+  {% endif %}
+{% endcall %}

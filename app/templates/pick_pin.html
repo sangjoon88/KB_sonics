@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}PIN 확인{% endblock %}
+{% block content %}
+{% call card() %}
+  <div class="text-sm text-stone-500">{{ '👑 관리자' if m.is_owner else '🛡️ 운영진' if m.is_admin else '본인' }} 확인</div>
+  <h1 class="text-xl font-bold">{{ m.name }}님, PIN을 입력하세요</h1>
+  {% if m.pin_must_change %}
+  <p class="mt-2 text-sm rounded-lg bg-orange-50 text-orange-800 px-3 py-2">처음 들어오셨나요? 초기 PIN <b>{{ default_pin }}</b>을 입력하고, 다음 화면에서 본인만 아는 PIN으로 바꿔주세요.</p>
+  {% else %}
+  <p class="text-xs text-stone-500 mt-1">이 폰에서는 한 번만 입력하면 기억돼요. PIN을 잊었으면 운영진에게 초기화를 요청하세요.</p>
+  {% endif %}
+  <form method="post" action="/pick/pin" class="mt-4 space-y-3">
+    <input type="hidden" name="member_id" value="{{ m.id }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <input name="pin" type="password" inputmode="numeric" autocomplete="current-password" pattern="[0-9]{4,6}" required autofocus
+           class="w-full border border-stone-300 rounded-lg px-3 py-3 text-2xl tracking-[.5em] text-center">
+    <button class="w-full {{ btn_cls() }}">확인</button>
+  </form>
+  <a href="/pick?next={{ next }}" class="block text-center text-sm text-stone-500 underline mt-4">다른 이름 선택</a>
+{% endcall %}
+{% endblock %}

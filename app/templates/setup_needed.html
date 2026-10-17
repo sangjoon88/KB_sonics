@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block content %}
+{% call card() %}
+  <h1 class="text-xl font-bold">준비 중</h1>
+  <p class="mt-2 text-stone-600 text-sm">아직 운영진이 설정되지 않았습니다.<br>
+  운영진은 <code class="bg-stone-100 px-1 rounded">/setup?token=SETUP_TOKEN</code> 으로 접속해 관리자 계정을 만드세요.</p>
+{% endcall %}
+{% endblock %}

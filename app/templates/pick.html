@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, role_icon %}
+{% block title %}{% if og_session %}{{ fmt_date(og_session.date) }} 농구 참석 투표{% else %}이름 선택{% endif %}{% endblock %}
+{% block og %}{% include "_og.html" %}{% endblock %}
+{% block content %}
+{% call card() %}
+  {% if s %}<div class="text-sm text-stone-500">{{ fmt_session(s) }} 농구 참석 투표</div>{% endif %}
+  <h1 class="text-xl font-bold">내 이름을 선택하세요</h1>
+  <p class="text-xs text-stone-500 mt-1">이 폰에서 한 번만 선택하면 기억됩니다.</p>
+  <input id="q" type="search" placeholder="이름 검색" class="mt-3 w-full border border-stone-300 rounded-lg px-3 py-2"
+         oninput="for(const b of document.querySelectorAll('[data-name]')) b.closest('form').style.display = b.dataset.name.includes(this.value.trim()) ? '' : 'none'">
+  <div class="mt-3 grid grid-cols-3 gap-2">
+    {% for m in members %}
+      <form method="post" action="/pick">
+        <input type="hidden" name="member_id" value="{{ m.id }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <button data-name="{{ m.name }}" class="w-full rounded-lg border border-stone-200 bg-stone-50 py-3 font-medium active:bg-orange-100">{{ m.name }}{% if m.is_admin %} <span class="text-xs">{{ role_icon(m) }}</span>{% endif %}</button>
+      </form>
+    {% else %}
+      <p class="col-span-3 text-stone-500 text-sm">등록된 멤버가 없습니다. 운영진에게 문의하세요.</p>
+    {% endfor %}
+  </div>
+  <p class="text-xs text-stone-500 mt-4">이름을 누르면 본인 PIN을 확인해요. 처음이면 운영진이 알려준 초기 PIN을 입력하세요.<br>👑 관리자 · 🛡️ 운영진<br>목록에 이름이 없으면 운영진에게 등록을 요청하세요.</p>
+{% endcall %}
+{% endblock %}

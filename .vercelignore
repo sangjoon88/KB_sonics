@@ -1,0 +1,6 @@
+.venv
+tests
+scripts
+alembic
+*.db
+.pytest_cache

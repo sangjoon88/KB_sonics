@@ -1,0 +1,35 @@
+{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, guest_tag %}
+<div class="space-y-4">
+{% for item in games %}{% set g = item.g %}
+  {% call card() %}
+    <div class="flex items-center justify-between">
+      <div class="font-bold">게임 {{ g.game_no }} <span class="text-xs font-normal text-stone-500">{{ MODE_LABEL[g.lineup_mode] }}</span></div>
+      {{ balance_badge(item.label) }}
+    </div>
+    {% if g.status == 'finished' %}
+      <div class="mt-2 flex items-center justify-center gap-4 text-3xl font-black">
+        <span class="{{ 'text-orange-600' if g.winner == 'A' else 'text-stone-400' }}">{{ g.score_a }}</span>
+        <span class="text-stone-300 text-xl">:</span>
+        <span class="{{ 'text-sky-600' if g.winner == 'B' else 'text-stone-400' }}">{{ g.score_b }}</span>
+      </div>
+    {% else %}
+      <div class="mt-1 text-xs text-stone-500 text-center">경기 전</div>
+    {% endif %}
+    <div class="mt-3 grid grid-cols-2 gap-3">
+      {% for side, members, color in [('A', item.a, 'orange'), ('B', item.b, 'sky')] %}
+      <div>
+        <div class="text-sm font-bold text-{{ color }}-700 mb-1">{{ '🟧 A팀' if side == 'A' else '🟦 B팀' }} <span class="font-normal text-stone-400">{{ members|length }}</span>
+          {% if g.winner == side %}<span class="text-xs">🏆</span>{% endif %}</div>
+        <ul class="space-y-1">
+          {% for m in members %}
+          <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ pos_badges(m) }} <span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}{% if early and early.get(m.id) %}<span class="text-[10px] text-amber-700">⏰{{ early[m.id] }}</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  {% endcall %}
+{% else %}
+  {% call card() %}<p class="text-stone-500 text-sm">아직 팀이 나오지 않았습니다.</p>{% endcall %}
+{% endfor %}
+</div>

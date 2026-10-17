@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}초기 등급 평가{% endblock %}
+
+{% macro grade_row(r) -%}
+  <div class="bg-white border border-stone-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+    <span class="text-sm font-medium truncate">{{ r.member.name }}
+      {%- if r.member.initial_grade is not none %} <span class="text-[10px] text-emerald-700">확정 {{ r.member.initial_grade }}</span>{% endif %}</span>
+    <div class="flex gap-1">
+      {% for g in range(1, 6) %}
+      <label class="w-9 h-9 rounded-md border flex items-center justify-center text-sm has-[:checked]:bg-orange-600 has-[:checked]:text-white has-[:checked]:border-orange-600">
+        <input type="radio" class="sr-only" name="g_{{ r.member.id }}" value="{{ g }}" {{ 'checked' if r.my_grade == g }}>{{ g }}</label>
+      {% endfor %}
+    </div>
+  </div>
+{%- endmacro %}
+
+{% macro confirm_row(r, value) -%}
+  <div class="rounded-lg px-3 py-2 flex items-center justify-between gap-2 border {{ 'bg-red-50 border-red-300' if r.disagree else 'bg-white border-stone-200' }}">
+    <span class="text-sm"><b>{{ r.member.name }}</b>
+      {% if r.grades %}<span class="text-xs text-stone-500">평가 {{ r.grades|join(', ') }} · 평균 {{ r.avg }}</span>{% endif %}
+      {% if r.disagree %}<span class="text-[10px] text-red-700 font-semibold">2등급↑ 차이</span>{% endif %}</span>
+    <input name="c_{{ r.member.id }}" type="number" step="0.01" min="1" max="5" inputmode="decimal" value="{{ value }}"
+           class="w-20 border border-stone-300 rounded-lg px-2 py-1 text-right">
+  </div>
+{%- endmacro %}
+
+{% block content %}
+{% set active = '/admin/rating-setup' %}{% include "admin/_nav.html" %}
+{# 평가할 사람: 아직 확정 안 됐고 내가 평가 안 한 멤버 #}
+{% set to_rate = rows|selectattr('my_grade', 'none')|selectattr('member.initial_grade', 'none')|list %}
+{% set rated = rows|reject('in', to_rate)|list %}
+{# 확정 대기: 내가 평가했고 아직 확정 안 된 멤버 (내가 평가하기 전엔 다른 운영진 평가를 보여주지 않음) #}
+{% set to_confirm = rows|selectattr('member.initial_grade', 'none')|rejectattr('my_grade', 'none')|list %}
+{% set confirmed = rows|rejectattr('member.initial_grade', 'none')|list %}
+
+<h1 class="text-xl font-bold">초기 등급 평가</h1>
+{% call card() %}
+  <div class="text-xs text-stone-600 grid grid-cols-5 gap-1 text-center">
+    {% for g, d in [(1,'입문'),(2,'초급'),(3,'중급·평균'),(4,'중상급'),(5,'상급')] %}<div><b class="text-base">{{ g }}</b><div>{{ d }}</div></div>{% endfor %}
+  </div>
+  <div class="mt-3 text-xs text-stone-500">평가 제출 현황:
+    {% for a, n in raters %}<span class="inline-block mr-2 {{ 'text-emerald-700' if n else 'text-stone-400' }}">{{ a.name }} {{ '✓' ~ n if n else '미제출' }}</span>{% endfor %}
+  </div>
+{% endcall %}
+
+{# ---------------- ① 내 평가 ---------------- #}
+<h2 class="font-bold">① 내 평가 {% if to_rate %}<span class="text-orange-600">{{ to_rate|length }}명</span>{% endif %}</h2>
+<p class="text-xs text-stone-500 -mt-3">내가 아직 평가하지 않은 멤버만 보여요. 다른 운영진의 평가는 내가 제출하기 전에는 보이지 않아요.</p>
+<form method="post" action="/admin/rating-setup/mine" class="space-y-1">
+  {% for r in to_rate %}{{ grade_row(r) }}{% endfor %}
+  {% if not to_rate %}
+    <div class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-3 text-sm">✓ 새로 평가할 멤버가 없어요. 신규 멤버가 등록되면 여기에 나타나요.</div>
+  {% endif %}
+  {% if rated %}
+  <details class="pt-1">
+    <summary class="text-sm text-stone-600 cursor-pointer py-1">이미 평가했거나 확정된 멤버 수정 ({{ rated|length }}명)</summary>
+    <div class="space-y-1 mt-1">{% for r in rated %}{{ grade_row(r) }}{% endfor %}</div>
+  </details>
+  {% endif %}
+  <button class="w-full mt-2 {{ btn_cls() }}">내 평가 제출</button>
+</form>
+
+{# ---------------- ② 확정 ---------------- #}
+{% if to_confirm or confirmed %}
+<h2 class="font-bold pt-4">② 평균 확인 · 확정 {% if to_confirm %}<span class="text-orange-600">{{ to_confirm|length }}명 대기</span>{% endif %}</h2>
+{% if to_confirm %}
+<p class="text-xs text-stone-500 -mt-3">평가 차이가 2등급 이상인 멤버는 빨간색이에요. 이야기 후 값을 조정하고 확정하세요. 확정하면 이 목록에서 빠져요.</p>
+<form method="post" action="/admin/rating-setup/confirm" class="space-y-1">
+  {% for r in to_confirm %}{{ confirm_row(r, r.avg) }}{% endfor %}
+  <button class="w-full mt-2 {{ btn_cls('dark') }}" onclick="return confirm('{{ to_confirm|length }}명의 초기 등급을 확정할까요?')">{{ to_confirm|length }}명 확정</button>
+</form>
+{% else %}
+<div class="rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-3 text-sm -mt-2">✓ 확정 대기 중인 멤버가 없어요.</div>
+{% endif %}
+
+{% if confirmed %}
+<details>
+  <summary class="text-sm text-stone-600 cursor-pointer py-1">확정된 멤버 다시 조정 ({{ confirmed|length }}명)</summary>
+  <p class="text-xs text-stone-500 mt-1">경기 기록이 없는 멤버는 새 값으로 레이팅이 다시 계산되고, 이미 경기를 뛴 멤버는 초기 등급(비교 기준)만 바뀌어요.</p>
+  <form method="post" action="/admin/rating-setup/confirm" class="space-y-1 mt-2">
+    {% for r in confirmed %}{{ confirm_row(r, r.member.initial_grade) }}{% endfor %}
+    <button class="w-full mt-2 {{ btn_cls('ghost') }}" onclick="return confirm('바꾼 값으로 다시 확정할까요?')">다시 확정</button>
+  </form>
+</details>
+{% endif %}
+{% endif %}
+{% endblock %}

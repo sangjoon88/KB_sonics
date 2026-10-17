@@ -1,0 +1,31 @@
+{% macro card() -%}
+<section class="bg-white rounded-xl shadow-sm border border-stone-200 p-4 {{ kwargs.get('cls', '') }}">{{ caller() }}</section>
+{%- endmacro %}
+
+{% macro pos_badge(p) -%}
+{% if p %}<span class="inline-block text-[10px] font-bold px-1.5 rounded {{ {'G':'bg-sky-100 text-sky-700','F':'bg-violet-100 text-violet-700','C':'bg-amber-100 text-amber-800'}[p] }}">{{ p }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro balance_badge(label) -%}
+{% if label %}<span class="text-xs px-2 py-0.5 rounded-full {{ {'양호':'bg-emerald-100 text-emerald-700','보통':'bg-amber-100 text-amber-700','주의':'bg-red-100 text-red-700'}[label] }}">밸런스 {{ label }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro btn_cls(kind='primary') -%}
+{{ {'primary':'bg-orange-600 text-white active:bg-orange-700','ghost':'bg-white border border-stone-300 text-stone-800 active:bg-stone-100','danger':'bg-red-600 text-white','dark':'bg-stone-800 text-white'}[kind] }} rounded-lg px-4 py-3 font-semibold text-center
+{%- endmacro %}
+
+{% macro role_icon(m) -%}
+{% if m.is_owner %}<span title="관리자">👑</span>{% elif m.is_admin %}<span title="운영진">🛡️</span>{% endif %}
+{%- endmacro %}
+
+{% macro guest_tag(m) -%}
+{% if m.is_guest %}<span class="text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
+{%- endmacro %}
+
+{% macro pos_badges(m) -%}
+{{ pos_badge(m.position) }}{% if m.position2 %}<span class="opacity-50 ml-0.5">{{ pos_badge(m.position2) }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro place(s, cls='text-stone-600') -%}
+{% if s.location %}<div class="{{ cls }}">📍 {{ s.location }} <a href="https://map.naver.com/p/search/{{ s.location|urlencode }}" target="_blank" rel="noopener" class="text-xs text-sky-700 underline whitespace-nowrap">지도</a></div>{% endif %}
+{%- endmacro %}

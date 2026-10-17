@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, btn_cls %}
+{% block title %}설정{% endblock %}
+{% block content %}
+{% set active = '/admin/settings' %}{% include "admin/_nav.html" %}
+{% call card() %}
+  <h2 class="font-bold">밸런스 모드</h2>
+  <p class="text-xs text-stone-500">키 매치업을 얼마나 중요하게 볼지 정합니다.</p>
+  <form method="post" action="/admin/settings" class="mt-3 space-y-2">
+    {% for key, w in modes.items() %}
+    <label class="flex items-center justify-between border rounded-lg px-3 py-3 has-[:checked]:border-orange-600 has-[:checked]:bg-orange-50">
+      <span><input type="radio" name="balance_mode" value="{{ key }}" {{ 'checked' if mode == key }} class="mr-2">{{ BALANCE_MODE_LABELS[key] }}</span>
+      <span class="text-xs text-stone-500">키 가중치 {{ w }}</span>
+    </label>
+    {% endfor %}
+    <button class="w-full {{ btn_cls() }}">저장</button>
+  </form>
+{% endcall %}
+{% endblock %}

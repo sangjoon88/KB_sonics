@@ -1,0 +1,65 @@
+{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag %}
+{% set editable = game.status != 'finished' %}
+<div class="space-y-3">
+  <div class="flex items-center justify-between">
+    {{ balance_badge(label) }}
+    {% if editable and game.candidates %}
+    <button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/next" hx-target="#board" class="{{ btn_cls('ghost') }} !py-2 text-sm">🔀 다시 섞기 ({{ game.candidate_idx + 1 }}/{{ game.candidates|length }})</button>
+    {% endif %}
+  </div>
+  {% if editable %}<p class="text-xs text-stone-500">선수를 탭하면 반대 팀으로 이동합니다.</p>{% endif %}
+  <div class="grid grid-cols-2 gap-3">
+    {% for side, members, color in [('A', team_a, 'orange'), ('B', team_b, 'sky')] %}
+    <div class="bg-white rounded-xl border border-stone-200 p-2">
+      <div class="text-sm font-bold text-{{ color }}-700 px-1 mb-1">{{ '🟧 A팀' if side == 'A' else '🟦 B팀' }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
+      <div class="space-y-1">
+      {% for m in members %}
+        <button {% if editable %}hx-post="/admin/s/{{ s.id }}/game/{{ no }}/move/{{ m.id }}" hx-target="#board"{% else %}disabled{% endif %}
+                class="w-full flex items-center gap-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-2 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
+          {{ pos_badges(m) }}<span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}
+          {% if early and early.get(m.id) %}<span class="text-[10px] text-amber-700">⏰{{ early[m.id] }}</span>{% endif %}
+          <span class="text-[10px] text-stone-400">{{ m.height_cm or '?' }}</span>
+        </button>
+      {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if moved %}<p class="text-xs text-emerald-700">초록 테두리 = 게임 1과 팀이 바뀐 선수 ({{ moved|length }}명)</p>{% endif %}
+
+  {% if editable and not_in %}
+  <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm">
+    <div class="font-semibold text-amber-800">명단에 없는 출석자</div>
+    <div class="mt-2 flex flex-wrap gap-2">
+      {% for m in not_in %}<button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/add/{{ m.id }}" hx-target="#board" class="bg-white border rounded px-2 py-1">+ {{ m.name }}</button>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if editable and absent %}
+  <div class="rounded-lg bg-stone-50 border border-stone-200 p-3 text-sm">
+    <div class="font-semibold">출석 해제됐지만 명단에 있는 사람</div>
+    <div class="mt-2 flex flex-wrap gap-2">
+      {% for m in absent %}<button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/remove/{{ m.id }}" hx-target="#board" class="bg-white border rounded px-2 py-1">− {{ m.name }}</button>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if ev %}
+  <details class="bg-white rounded-xl border border-stone-200 p-3 text-sm">
+    <summary class="font-semibold cursor-pointer">왜 이렇게 나눴나 (운영진 전용)</summary>
+    <table class="w-full mt-2 text-xs">
+      <tr class="text-stone-400"><td></td><td class="text-right">차이</td><td class="text-right">반영 점수</td></tr>
+      <tr><td>실력 차 (팀 평균, 등급)</td><td class="text-right">{{ '%.2f'|format(ev.breakdown.strength_gap / 4) }}</td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.strength) }}</td></tr>
+      <tr><td>포지션 차 (G/F/C)</td><td class="text-right">{{ ev.breakdown.position_gap }}</td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.position) }}</td></tr>
+      <tr><td>키 매치업 차</td><td class="text-right">{{ '%.2f'|format(ev.breakdown.height_matchup_gap) }}</td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.height) }}</td></tr>
+      <tr><td>지난주 반복 조합</td><td></td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.repeat_weekly) }}</td></tr>
+      {% if ev.breakdown.repeat_game1 %}<tr><td>게임 1 반복 조합</td><td></td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.repeat_game1) }}</td></tr>{% endif %}
+      <tr class="border-t font-bold"><td>총 불균형 점수 <span class="font-normal text-stone-400">(낮을수록 좋음)</span></td><td></td><td class="text-right">{{ '%.2f'|format(ev.cost) }}</td></tr>
+    </table>
+    {% set mu_a = team_a|map(attribute='mu')|list %}{% set mu_b = team_b|map(attribute='mu')|list %}
+    <p class="mt-2 text-xs text-stone-500">팀 평균 실력: A {{ '%.1f'|format(grade_of((mu_a|sum)/(mu_a|length))) if mu_a }}등급 / B {{ '%.1f'|format(grade_of((mu_b|sum)/(mu_b|length))) if mu_b }}등급</p>
+  </details>
+  {% endif %}
+
+  <a href="/admin/s/{{ s.id }}/game/{{ no }}/score" class="block {{ btn_cls('dark') }}">{{ '경기 끝! 점수 입력 →' if editable else '점수 수정 →' }}</a>
+</div>
