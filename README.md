@@ -30,6 +30,13 @@ uvicorn app.main:app --reload
 4. 배포 → `https://<도메인>/setup?token=<SETUP_TOKEN>` 에서 첫 운영진 생성 (이후 `/setup`은 404)
 5. `/admin/members/import` 멤버 붙여넣기 → 운영진 지정 → `/admin/rating-setup` 초기 등급 → 첫 모임 생성
 
+## 운영 배포 현황
+
+- 사이트: https://kb-sonics.vercel.app (Vercel 프로젝트 `kb-sonics`, 리전 `sin1` = Neon `ap-southeast-1` 과 같은 싱가포르)
+- GitHub `main` 에 push 하면 Vercel 이 자동 배포
+- DB 스키마 변경 시: 로컬에서 `DATABASE_URL=<운영 pooled url> alembic upgrade head` 먼저 실행 후 push
+- PostgreSQL 에서 테스트: `TEST_DATABASE_URL=<테스트 전용 DB url> pytest` (테스트마다 테이블을 지우므로 운영 DB 금지)
+
 ## 구조
 
 ```text

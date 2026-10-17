@@ -7,3 +7,6 @@ __pycache__/
 *.db
 .pytest_cache/
 .vercel
+
+.vercel
+.env*.local
