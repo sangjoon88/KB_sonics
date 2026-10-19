@@ -534,7 +534,8 @@ def test_member_summary(client, db):
     assert ms["not_logged_in"] == 3 and ms["no_height"] == 1
     # 홈(모든 멤버)에는 집계표, 운영진 전용 항목은 멤버 관리 화면에만
     home = client.get("/").text
-    assert "우리 동아리" in home and "첫 로그인 전" not in home
+    assert "소닉스 식구들" in home and "첫 로그인 전" not in home
+    assert "출석왕" in home and "첫 경기가 끝나면 순위가 나와요" in home   # 기록이 없어도 랭킹 카드 표시
     page = client.get("/admin/members").text
-    assert "우리 동아리" in page and "첫 로그인 전 3명" in page and "일괄 등록" not in page
+    assert "소닉스 식구들" in page and "첫 로그인 전 3명" in page and "일괄 등록" not in page
     assert client.get("/admin/members/import").status_code in (404, 405)

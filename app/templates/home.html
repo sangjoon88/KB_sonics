@@ -87,8 +87,7 @@
   {% endcall %}
 {% endif %}
 
-{# ---- 랭킹 미리보기 ---- #}
-{% if top_att %}
+{# ---- 랭킹 미리보기 (기록이 없어도 항상 표시) ---- #}
   {% call card() %}
     <div class="flex items-center justify-between">
       <div class="font-bold">시즌 랭킹</div>
@@ -102,14 +101,14 @@
           {% for r in rows %}
           <li class="flex justify-between {{ 'font-bold text-orange-700' if r.member_id == me.id }}"><span>{{ ['🥇','🥈','🥉'][loop.index0] }} {{ r.name }}</span><span>{{ (r.attended ~ '회') if fmt == 'att' else (r.best_streak ~ '연승') }}</span></li>
           {% else %}
-          <li class="text-stone-400 text-xs">아직 기록 없음</li>
+          <li class="text-stone-400 text-xs">첫 경기가 끝나면 순위가 나와요</li>
           {% endfor %}
         </ol>
       </div>
       {% endfor %}
     </div>
   {% endcall %}
-{% endif %}
+
 {# ---- 멤버 집계 ---- #}
 {% include "_member_summary.html" %}
 {% endblock %}
