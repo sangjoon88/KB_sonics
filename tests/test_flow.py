@@ -539,3 +539,9 @@ def test_member_summary(client, db):
     page = client.get("/admin/members").text
     assert "소닉스 식구들" in page and "첫 로그인 전 3명" in page and "일괄 등록" not in page
     assert client.get("/admin/members/import").status_code in (404, 405)
+
+
+def test_winrate_threshold_grows_with_season():
+    from app.services.stats import winrate_min_games
+    assert winrate_min_games(0) == 1 and winrate_min_games(2) == 1
+    assert winrate_min_games(10) == 3 and winrate_min_games(20) == 6 and winrate_min_games(80) == 24

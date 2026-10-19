@@ -1,6 +1,7 @@
 """출석/승률/연승 집계 (공개 지표만, 레이팅 미노출)."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -9,7 +10,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Attendance, ClubSession, Game, GameRoster, Member
 
-MIN_GAMES_FOR_WINRATE = 4
+WINRATE_MIN_SHARE = 0.3   # 승률 순위: 시즌에 열린 경기의 30% 이상 뛴 멤버만
+
+
+def winrate_min_games(season_games: int) -> int:
+    """시즌 진행에 따라 올라가는 승률 순위 최소 경기 수 (최소 1경기)."""
+    return max(1, math.ceil(season_games * WINRATE_MIN_SHARE))
 
 
 @dataclass
@@ -19,6 +25,7 @@ class MemberStats:
     attended: int = 0
     sessions_total: int = 0
     games: int = 0
+    season_games: int = 0   # 이번 시즌에 결과가 입력된 전체 게임 수 (모든 멤버 공통)
     wins: int = 0
     losses: int = 0
     draws: int = 0
@@ -96,15 +103,18 @@ def compute_stats(db: Session, season: int, today: date | None = None) -> dict[i
                 opp = g.score_b if r.side == "A" else g.score_a
                 st.recent.append({"date": s.date, "session_id": s.id, "game_no": g.game_no,
                                   "side": r.side, "result": result, "my": my, "opp": opp})
+    season_games = sum(1 for s in sessions for g in s.games if g.status == "finished" and g.winner is not None)
     for st in stats.values():
         st.recent.reverse()
+        st.season_games = season_games
     return stats
 
 
 def leaderboard(stats: dict[int, MemberStats], sort: str) -> list[MemberStats]:
     rows = [s for s in stats.values() if s.attended or s.games]
     if sort == "winrate":
-        rows = [s for s in rows if s.games >= MIN_GAMES_FOR_WINRATE]
+        need = winrate_min_games(max((s.season_games for s in stats.values()), default=0))
+        rows = [s for s in rows if s.games >= need]
         return sorted(rows, key=lambda s: (-s.win_rate, -s.games, s.name))
     if sort == "streak":
         return sorted(rows, key=lambda s: (-s.best_streak, -s.current_streak, s.name))

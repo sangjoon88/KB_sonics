@@ -9,23 +9,115 @@
   <meta property="og:description" content="일요일 농구 참석 투표 · 팀 나누기 · 기록">
   {% endblock %}
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#ea580c">
+  <meta name="theme-color" content="#552583">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script>
+    // 다크 모드 기본. 사용자가 라이트로 바꾸면 이 기기에 기억한다.
+    try { if (localStorage.getItem('theme') !== 'light') document.documentElement.classList.add('dark'); }
+    catch (e) { document.documentElement.classList.add('dark'); }
+  </script>
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    // LA 레이커스 테마: 템플릿의 'orange' 강조색을 레이커스 퍼플 계열로 바꿔 쓴다
+    tailwind.config = { theme: { extend: { colors: { orange: {
+      50: '#f5f0fa', 100: '#ebe0f5', 200: '#d6c2eb', 300: '#b794db', 400: '#8f5cc4',
+      500: '#6f37a3', 600: '#552583', 700: '#46206c', 800: '#371a55', 900: '#2a1441' } } } } };
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
   <style>
-    body { -webkit-tap-highlight-color: transparent; }
+    :root {
+      --lakers-purple: #552583; --lakers-gold: #FDB927;
+      --bg: #f4f1f8;
+    }
+    html.dark {
+      color-scheme: dark;
+      --bg: #0f0b16; --card: #1b1526; --raised: #231b31; --chip: #2b2240; --chip2: #352a4d;
+      --line: #2f2642; --line2: #43375c;
+      --text: #f4effa; --text2: #ddd3ea; --muted: #b5a9c7; --muted2: #968aab; --faint: #75698a; --faint2: #5a4f6d;
+      --on-gold: #1b1027;
+    }
+    body { -webkit-tap-highlight-color: transparent; background-color: var(--bg); }
     .htmx-request.htmx-indicator, .htmx-request .htmx-indicator { opacity: 1 }
     .htmx-indicator { opacity: 0; transition: opacity .2s }
+    .site-header { background: var(--lakers-purple); border-bottom: 3px solid var(--lakers-gold); }
+    .site-logo { color: var(--lakers-gold); letter-spacing: .02em; }
+
+    /* ---------- 다크 모드 (기본) ---------- */
+    html.dark body { color: var(--text); }
+    html.dark .bg-white { background-color: var(--card); }
+    html.dark .bg-stone-50 { background-color: var(--raised); }
+    html.dark .bg-stone-100 { background-color: var(--chip); }
+    html.dark .bg-stone-200 { background-color: var(--chip2); }
+    html.dark .text-stone-900, html.dark .text-stone-800 { color: var(--text); }
+    html.dark .text-stone-700 { color: var(--text2); }
+    html.dark .text-stone-600 { color: var(--muted); }
+    html.dark .text-stone-500 { color: var(--muted2); }
+    html.dark .text-stone-400 { color: var(--faint); }
+    html.dark .text-stone-300 { color: var(--faint2); }
+    html.dark .border-stone-100, html.dark .border-stone-200 { border-color: var(--line); }
+    html.dark .border-stone-300 { border-color: var(--line2); }
+    html.dark .divide-stone-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--line); }
+
+    /* 진한 버튼(운영·경기 등록 등)과 주요 버튼은 레이커스 골드 */
+    html.dark .bg-stone-700, html.dark .bg-stone-800, html.dark .bg-stone-900,
+    html.dark .bg-orange-500, html.dark .bg-orange-600, html.dark .bg-orange-700 {
+      background-color: var(--lakers-gold); color: var(--on-gold);
+    }
+    html.dark .bg-stone-800.text-white, html.dark .bg-orange-600.text-white,
+    html.dark .bg-stone-800 .text-white, html.dark .bg-orange-600 .text-white { color: var(--on-gold); }
+    html.dark .bg-stone-800 .text-stone-300 { color: #4a3466; }
+    html.dark .text-orange-100 { color: #4a3466; }
+    html.dark .border-stone-700, html.dark .border-stone-800, html.dark .border-orange-600 { border-color: var(--lakers-gold); }
+
+    /* 강조 텍스트·옅은 배경 */
+    html.dark .text-orange-600, html.dark .text-orange-700, html.dark .text-orange-800 { color: var(--lakers-gold); }
+    html.dark .bg-orange-50 { background-color: rgba(122, 63, 184, .22); }
+    html.dark .bg-orange-100 { background-color: rgba(122, 63, 184, .32); }
+    html.dark .bg-orange-200 { background-color: rgba(122, 63, 184, .45); }
+    html.dark .border-orange-200 { border-color: rgba(253, 185, 39, .35); }
+    html.dark .border-orange-300 { border-color: rgba(143, 92, 196, .7); }
+    html.dark .border-sky-300 { border-color: rgba(56, 189, 248, .45); }
+    html.dark .ring-orange-400 { --tw-ring-color: var(--lakers-gold); }
+
+    /* 상태 색 (B팀·알림·배지) — 어두운 배경에서 읽히도록 */
+    html.dark .bg-sky-50 { background-color: rgba(56, 189, 248, .12); }
+    html.dark .bg-sky-100 { background-color: rgba(56, 189, 248, .2); }
+    html.dark .bg-sky-200 { background-color: rgba(56, 189, 248, .3); }
+    html.dark .text-sky-600, html.dark .text-sky-700, html.dark .text-sky-800 { color: #7dd3fc; }
+    html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, .12); }
+    html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, .2); }
+    html.dark .text-emerald-700, html.dark .text-emerald-800 { color: #6ee7b7; }
+    html.dark .border-emerald-200 { border-color: rgba(16, 185, 129, .35); }
+    html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, .12); }
+    html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, .2); }
+    html.dark .text-amber-600, html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900 { color: #fcd34d; }
+    html.dark .border-amber-200, html.dark .border-amber-300 { border-color: rgba(245, 158, 11, .35); }
+    html.dark .bg-red-50 { background-color: rgba(239, 68, 68, .12); }
+    html.dark .bg-red-100 { background-color: rgba(239, 68, 68, .2); }
+    html.dark .text-red-600, html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5; }
+    html.dark .border-red-200, html.dark .border-red-300 { border-color: rgba(239, 68, 68, .35); }
+    html.dark .bg-violet-100 { background-color: rgba(139, 92, 246, .22); }
+    html.dark .text-violet-700 { color: #c4b5fd; }
+
+    /* 입력창 */
+    html.dark input:not([type=radio]):not([type=checkbox]), html.dark select, html.dark textarea {
+      background-color: #120d1b; color: var(--text); border-color: var(--line2);
+    }
+    html.dark input::placeholder, html.dark textarea::placeholder { color: var(--faint); }
+    html.dark .shadow-sm { box-shadow: none; }
   </style>
 </head>
-<body class="bg-stone-100 text-stone-900 min-h-screen pb-24">
-  <header class="bg-orange-600 text-white">
+<body class="text-stone-900 min-h-screen pb-24">
+  <header class="site-header text-white">
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
-      <a href="/" class="font-bold text-lg tracking-tight">🏀 KB SONICS</a>
+      <a href="/" class="site-logo font-black text-lg tracking-tight">🏀 KB SONICS</a>
       <div class="text-sm flex items-center gap-3">
         {% if me %}<a href="/me" class="opacity-90">{{ me.name }}</a>{% else %}<a href="/pick" class="underline">이름 선택</a>{% endif %}
         {% if admin %}<a href="/admin" class="bg-white/20 rounded px-2 py-0.5">{{ '👑 관리자' if admin.is_owner else '🛡️ 운영진' }}</a>{% endif %}
+        <button type="button" aria-label="화면 밝기 전환" title="라이트/다크 전환" class="text-base leading-none opacity-90"
+                onclick="var d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}">
+          <span class="hidden [html.dark_&]:inline">☀️</span><span class="[html.dark_&]:hidden">🌙</span>
+        </button>
       </div>
     </div>
   </header>

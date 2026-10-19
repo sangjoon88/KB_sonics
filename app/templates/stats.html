@@ -30,5 +30,5 @@
 </table>
 {% endcall %}
 <p class="text-xs text-stone-500">출석은 그날 경기를 1게임 이상 실제로 뛴 경우에만 셉니다. (투표만 하고 못 온 날은 제외)
-{% if sort == 'winrate' %}<br>승률은 {{ min_games }}경기 이상 출전한 멤버만 표시합니다.{% endif %}</p>
+{% if sort == 'winrate' %}<br>승률은 이번 시즌 경기의 30% 이상 뛴 멤버만 순위에 나와요. (지금 기준: {{ min_games }}경기 이상){% endif %}</p>
 {% endblock %}

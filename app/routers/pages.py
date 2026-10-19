@@ -12,7 +12,7 @@ from app.models import ClubSession, Game, Member
 from app.routers.common import redirect, render
 from app.services import ops
 from app.services.balancer import balance_label
-from app.services.stats import MIN_GAMES_FOR_WINRATE, compute_stats, leaderboard, member_summary
+from app.services.stats import compute_stats, leaderboard, member_summary, winrate_min_games
 from app.timeutil import today_kst
 
 router = APIRouter()
@@ -374,7 +374,8 @@ def stats_page(request: Request, sort: str = "attendance", season: int | None = 
     stats = compute_stats(db, season)
     rows = leaderboard(stats, sort)
     return render(request, "stats.html", {"rows": rows, "sort": sort, "season": season,
-                                          "min_games": MIN_GAMES_FOR_WINRATE}, member=me, admin=admin)
+                                          "min_games": winrate_min_games(next(iter(stats.values())).season_games if stats else 0)},
+                  member=me, admin=admin)
 
 
 @router.get("/me")

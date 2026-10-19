@@ -13,7 +13,7 @@
     <div class="mt-3 grid grid-cols-2 gap-3">
       {% for side, members, color in [('A', pv.a, 'orange'), ('B', pv.b, 'sky')] %}
       <div>
-        <div class="text-sm font-bold text-{{ color }}-700 mb-1">{{ '🟧 A팀' if side == 'A' else '🟦 B팀' }} <span class="font-normal text-stone-400">{{ members|length }}</span></div>
+        <div class="text-sm font-bold text-{{ color }}-700 mb-1">{{ '🟪 A팀' if side == 'A' else '🟦 B팀' }} <span class="font-normal text-stone-400">{{ members|length }}</span></div>
         <ul class="space-y-1">
           {% for m in members %}
           <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1 {{ 'ring-2 ring-orange-400' if me and m.id == me.id }}">
