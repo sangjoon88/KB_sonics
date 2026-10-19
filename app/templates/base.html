@@ -44,6 +44,8 @@
 
     /* ---------- 다크 모드 (기본) ---------- */
     html.dark body { color: var(--text); }
+    /* 색을 지정하지 않은 테두리의 기본값 (클래스로 지정한 테두리 색보다 우선순위가 낮게 :where 사용) */
+    html :where(.dark *, .dark ::before, .dark ::after) { border-color: var(--line2); }
     html.dark .bg-white { background-color: var(--card); }
     html.dark .bg-stone-50 { background-color: var(--raised); }
     html.dark .bg-stone-100 { background-color: var(--chip); }
@@ -98,6 +100,15 @@
     html.dark .border-red-200, html.dark .border-red-300 { border-color: rgba(239, 68, 68, .35); }
     html.dark .bg-violet-100 { background-color: rgba(139, 92, 246, .22); }
     html.dark .text-violet-700 { color: #c4b5fd; }
+
+    /* 선택된 라디오 항목 (밸런스 모드·포지션·등급 버튼): 다크에서는 골드로 통일 */
+    html.dark label[class*="has-[:checked]:bg-orange"]:has(:checked) {
+      background-color: var(--lakers-gold); border-color: var(--lakers-gold); color: var(--on-gold);
+    }
+    html.dark label[class*="has-[:checked]:bg-orange"]:has(:checked) [class*="text-stone"] { color: #4a3466; }
+    html.dark label[class*="has-[:checked]:bg-stone-700"]:has(:checked) {
+      background-color: var(--chip2); border-color: var(--muted2); color: var(--text);
+    }
 
     /* 입력창 */
     html.dark input:not([type=radio]):not([type=checkbox]), html.dark select, html.dark textarea {
