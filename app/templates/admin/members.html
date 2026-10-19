@@ -5,10 +5,8 @@
 {% set active = '/admin/members' %}{% include "admin/_nav.html" %}
 <p class="text-xs text-stone-500">새로 등록한 멤버의 초기 PIN은 <b>{{ default_pin }}</b>이에요. 첫 로그인 때 본인이 바꾸고 포지션·키를 입력합니다.
 {% if not admin.is_owner %}<br>운영진 지정·해제와 운영진 PIN 초기화는 관리자만 할 수 있어요.{% endif %}</p>
-<div class="grid grid-cols-2 gap-2">
-  <a href="/admin/members/import" class="{{ btn_cls() }}">📋 일괄 등록</a>
-  <a href="/admin/rating-setup" class="{{ btn_cls('ghost') }}">초기 등급 평가</a>
-</div>
+{% include "_member_summary.html" %}
+<a href="/admin/rating-setup" class="block {{ btn_cls('ghost') }}">초기 등급 평가</a>
 
 {% call card() %}
   <form method="post" action="/admin/members/new" class="grid grid-cols-2 gap-2">

@@ -59,12 +59,14 @@ def compute_stats(db: Session, season: int, today: date | None = None) -> dict[i
     members = db.scalars(select(Member).where(Member.is_guest.is_(False))).all()
     stats = {m.id: MemberStats(member_id=m.id, name=m.name) for m in members}
     sessions = _season_sessions(db, season)
-    # 출석률 분모: 실제로 열린(현장 출석 체크가 있었던) 모임 수
-    held = [s for s in sessions if any(a.checked_in for a in s.attendances)]
+    # 출석 = 그날 결과가 입력된 게임을 1게임 이상 실제로 뛴 경우 (투표·출석 체크만으로는 세지 않음)
+    # 출석률 분모 = 결과가 입력된 게임이 있는 모임 수
+    held = [s for s in sessions if any(g.status == "finished" for g in s.games)]
     for s in held:
-        for a in s.attendances:
-            if a.checked_in and a.member_id in stats:
-                stats[a.member_id].attended += 1
+        played = {r.member_id for g in s.games if g.status == "finished" for r in g.roster}
+        for mid in played:
+            if mid in stats:
+                stats[mid].attended += 1
     for st in stats.values():
         st.sessions_total = len(held)
 
@@ -108,7 +110,7 @@ def leaderboard(stats: dict[int, MemberStats], sort: str) -> list[MemberStats]:
         return sorted(rows, key=lambda s: (-s.best_streak, -s.current_streak, s.name))
     if sort == "games":
         return sorted(rows, key=lambda s: (-s.games, s.name))
-    return sorted(rows, key=lambda s: (-s.attended, -s.attendance_rate, s.name))
+    return sorted(rows, key=lambda s: (-s.attended, -s.games, s.name))  # 출석 같으면 경기 수
 
 
 def member_game_count(db: Session, member_id: int) -> int:
@@ -120,3 +122,32 @@ def last_attended(db: Session, member_id: int) -> date | None:
     return db.scalar(select(ClubSession.date).join(Attendance).where(
         Attendance.member_id == member_id, Attendance.checked_in.is_(True))
         .order_by(ClubSession.date.desc()).limit(1))
+
+
+def member_summary(db: Session, today: date) -> dict:
+    """멤버 집계 (홈·멤버 관리 공용). 정회원(활동 중, 게스트 제외) 기준."""
+    from datetime import timedelta
+    members = db.scalars(select(Member).where(Member.is_guest.is_(False), Member.is_active.is_(True))).all()
+    heights = [m.height_cm for m in members if m.height_cm]
+    main = {p: sum(1 for m in members if m.position == p) for p in ("G", "F", "C")}
+    able = {p: sum(1 for m in members if p in (m.position, m.position2)) for p in ("G", "F", "C")}
+
+    # 최근 4주 경기당 평균 참가 인원 (게스트 포함, 결과가 입력된 게임 기준)
+    since = today - timedelta(days=28)
+    recent = db.scalars(select(ClubSession).where(ClubSession.date >= since, ClubSession.date <= today)
+                        .options(selectinload(ClubSession.games).selectinload(Game.roster))).all()
+    per_day = [len({r.member_id for g in s.games if g.status == "finished" for r in g.roster}) for s in recent]
+    per_day = [n for n in per_day if n]
+    return {
+        "total": len(members),
+        "staff": sum(1 for m in members if m.is_admin),
+        "avg_height": round(sum(heights) / len(heights), 1) if heights else None,
+        "height_n": len(heights),
+        "main": main, "able": able, "pos_n": sum(main.values()),
+        "recent_avg": round(sum(per_day) / len(per_day), 1) if per_day else None,
+        "recent_days": len(per_day),
+        # 운영진 화면 전용
+        "not_logged_in": sum(1 for m in members if m.pin_must_change),
+        "no_height": sum(1 for m in members if not m.height_cm),
+        "unrated": sum(1 for m in members if m.initial_grade is None),
+    }

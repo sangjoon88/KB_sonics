@@ -1,4 +1,4 @@
-"""화면/API 통합 테스트: setup, import, rating-setup, 팀 짜기 차단, 하루 흐름."""
+"""화면/API 통합 테스트: setup, rating-setup, 팀 짜기 차단, 하루 흐름."""
 from sqlalchemy import select
 
 from app.auth import hash_pin
@@ -34,27 +34,6 @@ def test_setup_closes_after_first_admin(client):
     assert client.get(f"/setup?token={TOKEN}").status_code == 404
     r = client.post("/setup", data={"token": TOKEN, "name": "x", "pin": "1111", "pin2": "1111"})
     assert r.status_code == 404
-
-
-def test_import_parse():
-    rows = ops.parse_import("김OO,G,175\n이OO,C,188\n박OO\n\n김OO\n최OO,X,170\n정OO,F,99", {"기존"})
-    by = {(r.line_no): r for r in rows}
-    assert by[1].ok and by[1].position == "G" and by[1].height == 175
-    assert by[2].ok and by[2].position == "C"
-    assert by[3].ok and by[3].position is None and by[3].height is None
-    assert by[5].duplicate  # 붙여넣기 안의 중복
-    assert by[6].error      # 잘못된 포지션
-    assert by[7].error      # 잘못된 키
-    assert ops.parse_import("기존", {"기존"})[0].duplicate
-
-
-def test_import_via_screen(client, db):
-    _setup_admin(client)
-    r = client.post("/admin/members/import", data={"text": "가,G,175\n나\n운영자"})
-    assert "중복" in r.text
-    client.post("/admin/members/import", data={"text": "가,G,175\n나\n운영자", "commit": "1"})
-    names = set(db.scalars(select(Member.name)).all())
-    assert names == {"운영자", "가", "나"}
 
 
 def test_rating_setup_average_and_disagree(db):
@@ -222,14 +201,6 @@ def test_new_member_default_pin_flow(client, db):
     client.cookies.clear()
     r = client.post("/pick/pin", data={"member_id": m.id, "pin": "1234"}, follow_redirects=False)
     assert r.headers["location"].startswith("/pin")
-
-
-def test_import_two_positions(db):
-    rows = ops.parse_import("가,G/F,175\n나,센터,190\n다,C/C\n라,G/X", set())
-    assert (rows[0].position, rows[0].position2) == ("G", "F")
-    assert (rows[1].position, rows[1].position2) == ("C", None)
-    assert (rows[2].position, rows[2].position2) == ("C", None)
-    assert rows[3].error
 
 
 def test_weight_private(client, db):
@@ -520,3 +491,50 @@ def test_checkin_closes_voting_only_on_game_day(client, db):
     today = ops.create_session(db, admin, today_kst())
     ops.set_checkin(db, admin, today, admin.id, True)
     assert today.status == "closed"                                   # 당일 체크인 → 투표 마감
+
+
+def test_attendance_counts_only_played_days(client, db):
+    import datetime as _dt
+    from app.services.stats import compute_stats, leaderboard
+    admin = _login_admin(client, db)
+    ps = [Member(name=f"a{i}", position="GFC"[i % 3], height_cm=175 + i) for i in range(5)]
+    no_show = Member(name="노쇼", position="G", height_cm=170)
+    db.add_all([*ps, no_show])
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *ps, no_show]})
+    s = ops.create_session(db, admin, _dt.date(2099, 5, 3))
+    ops.vote(db, s, no_show, "yes")                           # 투표만 하고 안 옴
+    for m in [admin, *ps]:
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    early = ps[0]                                            # 게임 1만 뛰고 감
+    ops.submit_result(db, admin, g1, 30, 20)
+    ops.set_checkin(db, admin, s, early.id, False)
+    g2 = ops.create_game2(db, admin, s, "kept")
+    ops.submit_result(db, admin, g2, 25, 30)
+    db.expire_all()   # 실제 서비스는 요청마다 새 세션 — 테스트에서는 한 세션을 계속 쓰므로 새로 읽게 한다
+    st = compute_stats(db, 2099)
+    assert st[no_show.id].attended == 0
+    assert st[early.id].attended == 1 and st[early.id].games == 1      # 1게임만 뛰어도 출석 1회
+    assert st[ps[1].id].attended == 1 and st[ps[1].id].games == 2
+    assert leaderboard(st, "attendance")[0].games == 2                 # 출석 같으면 경기 수 많은 쪽 먼저
+
+
+def test_member_summary(client, db):
+    from app.services.stats import member_summary
+    from app.timeutil import today_kst
+    admin = _login_admin(client, db)   # G, 180
+    ops.create_member(db, admin, "센터1", "C", 190, "F")
+    ops.create_member(db, admin, "포워드1", "F", 182)
+    ops.create_member(db, admin, "미입력")
+    ms = member_summary(db, today_kst())
+    assert ms["total"] == 4 and ms["staff"] == 1
+    assert ms["avg_height"] == round((180 + 190 + 182) / 3, 1)
+    assert ms["main"] == {"G": 1, "F": 1, "C": 1} and ms["able"] == {"G": 1, "F": 2, "C": 1}
+    assert ms["not_logged_in"] == 3 and ms["no_height"] == 1
+    # 홈(모든 멤버)에는 집계표, 운영진 전용 항목은 멤버 관리 화면에만
+    home = client.get("/").text
+    assert "우리 동아리" in home and "첫 로그인 전" not in home
+    page = client.get("/admin/members").text
+    assert "우리 동아리" in page and "첫 로그인 전 3명" in page and "일괄 등록" not in page
+    assert client.get("/admin/members/import").status_code in (404, 405)

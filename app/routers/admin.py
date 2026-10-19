@@ -15,6 +15,7 @@ from app.routers.common import admin_page, redirect, render
 from app.services import lopsided, ops
 from app.services.balancer import balance_label
 from app.services.rating import grade_to_rating
+from app.services.stats import member_summary
 from app.timeutil import next_session_date, today_kst
 
 router = APIRouter(prefix="/admin")
@@ -347,7 +348,9 @@ def choose_post(sid: int, mode: str = Form(...), db: Session = Depends(get_db), 
 def members_page(request: Request, db: Session = Depends(get_db), admin=Depends(admin_page)):
     members = db.scalars(select(Member).where(Member.is_guest.is_(False))
                           .order_by(Member.is_active.desc(), Member.name)).all()
-    return render(request, "admin/members.html", {"members": members, "default_pin": DEFAULT_PIN},
+    return render(request, "admin/members.html", {"members": members, "default_pin": DEFAULT_PIN,
+                                                  "member_summary": member_summary(db, today_kst()),
+                                                  "show_admin_summary": True},
                   member=admin, admin=admin)
 
 
@@ -397,22 +400,6 @@ def member_reset_pin(mid: int, db: Session = Depends(get_db), admin=Depends(admi
     except ops.OpError as e:
         return redirect("/admin/members", err=str(e))
     return redirect("/admin/members", msg=f"{m.name} PIN을 {pin}(으)로 초기화했습니다. 다음 로그인 때 본인이 변경합니다.")
-
-
-@router.get("/members/import")
-def import_page(request: Request, admin=Depends(admin_page)):
-    return render(request, "admin/import.html", {"text": "", "rows": None}, member=admin, admin=admin)
-
-
-@router.post("/members/import")
-def import_post(request: Request, text: str = Form(""), commit: str = Form(""),
-                db: Session = Depends(get_db), admin=Depends(admin_page)):
-    if commit:
-        rows = ops.import_members(db, admin, text)
-        n = sum(1 for r in rows if r.ok)
-        return redirect("/admin/members", msg=f"{n}명 등록 완료")
-    rows = ops.parse_import(text, set(db.scalars(select(Member.name)).all()))
-    return render(request, "admin/import.html", {"text": text, "rows": rows}, member=admin, admin=admin)
 
 
 # ---------------------------------------------------------------- 초기 등급 평가

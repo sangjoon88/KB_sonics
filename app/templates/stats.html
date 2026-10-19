@@ -29,5 +29,6 @@
   </tbody>
 </table>
 {% endcall %}
-{% if sort == 'winrate' %}<p class="text-xs text-stone-500">승률은 {{ min_games }}경기 이상 출전한 멤버만 표시합니다.</p>{% endif %}
+<p class="text-xs text-stone-500">출석은 그날 경기를 1게임 이상 실제로 뛴 경우에만 셉니다. (투표만 하고 못 온 날은 제외)
+{% if sort == 'winrate' %}<br>승률은 {{ min_games }}경기 이상 출전한 멤버만 표시합니다.{% endif %}</p>
 {% endblock %}

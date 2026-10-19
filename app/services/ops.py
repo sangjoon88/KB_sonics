@@ -97,69 +97,6 @@ def parse_height(raw: str | None) -> int | None:
     return int(m.group(1))
 
 
-@dataclass
-class ImportRow:
-    line_no: int
-    raw: str
-    name: str
-    position: str | None = None
-    position2: str | None = None
-    height: int | None = None
-    error: str | None = None
-    duplicate: bool = False
-
-    @property
-    def ok(self) -> bool:
-        return not self.error and not self.duplicate
-
-
-def parse_import(text: str, existing_names: set[str]) -> list[ImportRow]:
-    """'이름[,포지션[,키]]' 줄 단위 파싱. 쉼표/탭 구분, 포지션 두 개는 'G/F'. 중복 이름은 경고."""
-    rows: list[ImportRow] = []
-    seen: set[str] = set()
-    for i, line in enumerate(text.splitlines(), start=1):
-        raw = line.strip()
-        if not raw:
-            continue
-        parts = [p.strip() for p in re.split(r"[,\t]", raw)]
-        row = ImportRow(line_no=i, raw=raw, name=parts[0])
-        if not row.name:
-            row.error = "이름 없음"
-        elif len(row.name) > 50:
-            row.error = "이름이 너무 김"
-        if len(parts) > 1 and parts[1]:
-            try:
-                row.position, row.position2 = parse_positions(parts[1])
-            except ValueError as e:
-                row.error = str(e)
-        if len(parts) > 2 and parts[2]:
-            try:
-                row.height = parse_height(parts[2])
-            except ValueError as e:
-                row.error = str(e)
-        if row.name and (row.name in existing_names or row.name in seen):
-            row.duplicate = True
-        seen.add(row.name)
-        rows.append(row)
-    return rows
-
-
-def import_members(db: Session, admin: Member, text: str) -> list[ImportRow]:
-    existing = set(db.scalars(select(Member.name)).all())
-    rows = parse_import(text, existing)
-    added = []
-    pin = default_pin_hash()
-    for r in rows:
-        if r.ok:
-            db.add(Member(name=r.name, position=r.position, position2=r.position2, height_cm=r.height,
-                          mu=25.0, sigma=INITIAL_SIGMA, pin_hash=pin, pin_must_change=True))
-            added.append(r.name)
-    if added:
-        log(db, admin, "member.import", f"count:{len(added)}", {"names": added})
-    db.commit()
-    return rows
-
-
 def create_member(db: Session, admin: Member, name: str, position: str | None = None,
                   height: int | None = None, position2: str | None = None) -> Member:
     """운영진이 멤버 등록. 초기 PIN은 DEFAULT_PIN, 첫 로그인 때 본인이 변경."""
