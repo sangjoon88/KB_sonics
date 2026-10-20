@@ -545,3 +545,54 @@ def test_winrate_threshold_grows_with_season():
     from app.services.stats import winrate_min_games
     assert winrate_min_games(0) == 1 and winrate_min_games(2) == 1
     assert winrate_min_games(10) == 3 and winrate_min_games(20) == 6 and winrate_min_games(80) == 24
+
+
+def test_game2_remove_player(client, db):
+    """게임 1만 뛰고 가는 사람: 게임 2 명단에서 빼기. 재편성이면 남은 인원으로 다시 밸런싱."""
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    rnd = __import__("random").Random(7)
+    ps = [Member(name=f"r{i}", position="GFC"[i % 3], height_cm=rnd.randint(168, 192)) for i in range(9)]
+    db.add_all(ps)
+    db.commit()
+    everyone = [admin, *ps]
+    ops.confirm_grades(db, admin, {m.id: float(1 + i % 5) for i, m in enumerate(everyone)})
+    s = ops.create_session(db, admin, _dt.date(2099, 6, 7))
+    for m in everyone:
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 50, 20)
+    leaver = ps[0]
+
+    # 재편성: 빼면 9명으로 다시 짜고, 후보안에도 뺀 사람이 없다
+    client.post(f"/admin/s/{s.id}/game/2/choose", data={"mode": "reshuffled"})
+    page = client.get(f"/admin/s/{s.id}/game/2/lineup").text
+    assert f"/game/2/remove/{leaver.id}" in page
+    assert "/game/1/remove/" not in client.get(f"/admin/s/{s.id}/game/1/lineup").text
+    r = client.post(f"/admin/s/{s.id}/game/2/remove/{leaver.id}", headers={"HX-Request": "true"})
+    assert r.status_code == 200
+    db.expire_all()
+    g2 = ops.get_game(db, s, 2)
+    ids = [r.member_id for r in g2.roster]
+    assert leaver.id not in ids and len(ids) == 9
+    na = sum(1 for r in g2.roster if r.side == "A")
+    assert abs(na - (9 - na)) <= 1
+    assert g2.candidates and all(leaver.id not in a + b for a, b in g2.candidates)
+    client.post(f"/admin/s/{s.id}/game/2/next", headers={"HX-Request": "true"})
+    db.expire_all()
+    assert leaver.id not in [r.member_id for r in g2.roster]
+    assert f"+ {leaver.name}" in client.get(f"/admin/s/{s.id}/game/2/lineup").text   # 실수로 뺐으면 다시 추가 가능
+
+    # 팀 유지: 나머지는 게임 1 팀 그대로, 그 사람만 빠진다
+    client.post(f"/admin/s/{s.id}/game/2/choose", data={"mode": "kept"})
+    db.expire_all()
+    g1_sides = {r.member_id: r.side for r in g1.roster}
+    client.post(f"/admin/s/{s.id}/game/2/remove/{leaver.id}", headers={"HX-Request": "true"})
+    db.expire_all()
+    sides = {r.member_id: r.side for r in g2.roster}
+    assert leaver.id not in sides and len(sides) == 9
+    assert all(g1_sides[mid] == side for mid, side in sides.items())
+
+    # 결과 입력 후엔 뺄 수 없고, 버튼도 안 보인다
+    ops.submit_result(db, admin, g2, 30, 28)
+    assert "/game/2/remove/" not in client.get(f"/admin/s/{s.id}/game/2/lineup").text

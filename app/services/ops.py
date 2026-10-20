@@ -636,13 +636,41 @@ def add_to_lineup(db: Session, admin: Member, game: Game, member_id: int) -> Gam
 
 
 def remove_from_lineup(db: Session, admin: Member, game: Game, member_id: int) -> Game:
+    """명단에서 빼기. 게임 2 재편성 명단이면 남은 인원으로 다시 밸런싱하고 후보안도 새로 만든다
+    (그대로 두면 한쪽 팀만 약해지고, '다시 섞기' 후보안에 뺀 사람이 다시 들어온다)."""
     _ensure_editable(game)
     row = next((r for r in game.roster if r.member_id == member_id), None)
-    if row:
-        game.roster.remove(row)
-        log(db, admin, "lineup.remove", f"game:{game.id}", {"member_id": member_id})
-        db.commit()
+    if row is None:
+        return game
+    game.roster.remove(row)
+    rebalanced = False
+    if game.game_no == 2 and game.lineup_mode == "reshuffled":
+        rebalanced = _rebalance_game2(db, game)
+        if not rebalanced:
+            game.candidates = None   # 예전 후보안에는 뺀 사람이 들어 있다
+            game.candidate_idx = 0
+    log(db, admin, "lineup.remove", f"game:{game.id}", {"member_id": member_id, "rebalanced": rebalanced})
+    db.commit()
     return game
+
+
+def _rebalance_game2(db: Session, game: Game) -> bool:
+    """현재 게임 2 명단 인원만으로 재편성(게임 1 반복 조합 고려). 불가능하면 False."""
+    members = [r.member for r in game.roster]
+    errors, _ = team_readiness(members)
+    if errors:
+        return False
+    g1 = get_game(db, game.session, 1)
+    try:
+        cands = balancer.balance(_players(members), weights=current_weights(db),
+                                 weekly_pairs=weekly_history(db, game.session),
+                                 game1_sides=_sides(g1) if g1 else None, top_k=TOP_K_CANDIDATES)
+    except balancer.BalanceError:
+        return False
+    game.candidates = [[c.team_a, c.team_b] for c in cands]
+    game.candidate_idx = 0
+    _write_roster(db, game, cands[0].team_a, cands[0].team_b)
+    return True
 
 
 def evaluate_game(db: Session, game: Game) -> balancer.Candidate | None:
