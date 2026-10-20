@@ -17,16 +17,22 @@
       {% for m in members %}
         <div class="flex items-stretch gap-1">
         <button {% if editable %}hx-post="/admin/s/{{ s.id }}/game/{{ no }}/move/{{ m.id }}" hx-target="#board"{% else %}disabled{% endif %}
-                class="min-w-0 flex-1 flex items-center gap-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-2 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
-          {{ pos_badges(m) }}<span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}
-          {% if early and early.get(m.id) %}<span class="text-[10px] text-amber-700">⏰{{ early[m.id] }}</span>{% endif %}
-          <span class="text-[10px] text-stone-400">{{ m.height_cm or '?' }}</span>
+                class="min-w-0 flex-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-1.5 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
+          {# 1줄: 포지션 + 이름 (이름이 폭을 우선 차지) / 2줄: 키·조퇴·게스트 #}
+          <span class="flex items-center gap-1 min-w-0">
+            <span class="shrink-0 whitespace-nowrap">{{ pos_badges(m) }}</span><span class="truncate font-medium">{{ m.name }}</span>
+          </span>
+          <span class="flex items-center gap-1.5 mt-0.5 text-[10px] text-stone-400 whitespace-nowrap overflow-hidden">
+            <span>{{ m.height_cm ~ 'cm' if m.height_cm else '키 ?' }}</span>
+            {% if early and early.get(m.id) %}<span class="text-amber-700">⏰{{ early[m.id] }}</span>{% endif %}
+            {{ guest_tag(m) }}
+          </span>
         </button>
         {% if can_remove %}
         <button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/remove/{{ m.id }}" hx-target="#board"
                 hx-confirm="{{ m.name }} 님을 게임 2 명단에서 뺄까요?{{ ' 남은 인원으로 팀을 다시 맞춥니다.' if game.lineup_mode == 'reshuffled' }}"
                 aria-label="{{ m.name }} 빼기"
-                class="shrink-0 w-8 rounded-lg border border-stone-200 bg-white text-stone-400 text-sm active:bg-stone-100">✕</button>
+                class="shrink-0 w-7 rounded-lg text-stone-400 text-xs active:bg-stone-100">✕</button>
         {% endif %}
         </div>
       {% endfor %}
