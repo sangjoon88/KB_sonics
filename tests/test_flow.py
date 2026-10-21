@@ -614,7 +614,9 @@ def test_comments(client, db):
     r = client.post(f"/s/{s.id}/comments", data={"body": "10분 늦어요 <script>alert(1)</script>"}, headers=hx)
     assert "10분 늦어요" in r.text and "<script>alert" not in r.text        # HTML은 이스케이프
     assert client.post(f"/s/{s.id}/comments", data={"body": "   "}, headers=hx).text.count("내용을 입력") == 1
-    assert "한마디" in client.get(f"/s/{s.id}").text
+    home = client.get("/").text
+    assert "한마디" in home and "10분 늦어요" in home          # 한마디는 홈 화면에
+    assert "한마디" not in client.get(f"/s/{s.id}").text
     cid = ops.list_comments(db, s)[0].id
     # 다른 멤버는 못 지움
     b.position, b.height_cm = "F", 180
@@ -643,3 +645,5 @@ def test_pending_voters_and_merged_early(client, db):
     assert "아직 투표 안 함 2명" in live and "미투표자" in live            # 관리자 본인 + 미투표자
     assert "조퇴" not in live.split("오는 사람", 1)[1]                      # 참석 현황에는 조퇴 구분 없음
     assert "일찍감" in live
+    home = client.get("/").text
+    assert "미투표 2명" in home and "미투표자" not in home         # 홈은 숫자만

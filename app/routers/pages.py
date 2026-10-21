@@ -1,6 +1,6 @@
 """멤버/공개 HTML 화면."""
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import (ADMIN_COOKIE, PinResult, clear_cookies, current_admin, current_member, hash_pin,
@@ -8,7 +8,7 @@ from app.auth import (ADMIN_COOKIE, PinResult, clear_cookies, current_admin, cur
 from app.config import DEFAULT_PIN
 from app.config import settings
 from app.db import get_db
-from app.models import ClubSession, Game, Member, SessionComment
+from app.models import ClubSession, Game, Member
 from app.routers.common import redirect, render
 from app.services import ops
 from app.services.balancer import balance_label
@@ -67,8 +67,7 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
            "voting_open": bool(s and ops.voting_open(s))}
     if s:
         ctx.update(_live_ctx(db, s))
-        ctx["comment_count"] = db.scalar(select(func.count()).select_from(SessionComment)
-                                         .where(SessionComment.session_id == s.id))
+        ctx["comments"] = ops.list_comments(db, s)
     # 지난 경기 결과: 결과가 입력된 가장 최근 모임 (이번 모임 제외)
     last = db.scalar(select(ClubSession).join(Game).where(Game.status == "finished",
                                                          ClubSession.id != (s.id if s else -1))
@@ -225,8 +224,7 @@ def vote_page(request: Request, session_id: int, db: Session = Depends(get_db),
     if (gate := _gate(me, f"/s/{s.id}")) is not None:
         return gate
     ctx = {"s": s, "my_vote": ops.get_attendance(db, s, me.id), "lists": _attendance_lists(s),
-           "voting_open": ops.voting_open(s), "og_session": s, **_live_ctx(db, s),
-           "comments": ops.list_comments(db, s)}
+           "voting_open": ops.voting_open(s), "og_session": s, **_live_ctx(db, s)}
     if admin:
         ctx.update(_proxy_ctx(db, s))
     return render(request, "vote.html", ctx, member=me, admin=admin)
@@ -375,7 +373,7 @@ def comment_add(request: Request, session_id: int, body: str = Form(""), db: Ses
         err = str(e)
     if request.headers.get("HX-Request"):
         return _comments(request, db, s, me, admin, err)
-    return redirect(f"/s/{s.id}#comments", err=err) if err else redirect(f"/s/{s.id}#comments")
+    return redirect("/#comments", err=err) if err else redirect("/#comments")
 
 
 @router.post("/s/{session_id}/comments/{comment_id}/delete")
@@ -391,7 +389,7 @@ def comment_delete(request: Request, session_id: int, comment_id: int, db: Sessi
         err = str(e)
     if request.headers.get("HX-Request"):
         return _comments(request, db, s, me, admin, err)
-    return redirect(f"/s/{s.id}#comments", err=err) if err else redirect(f"/s/{s.id}#comments")
+    return redirect("/#comments", err=err) if err else redirect("/#comments")
 
 
 # ---------------------------------------------------------------- 오늘 경기

@@ -15,7 +15,6 @@
   </div>
 {% endcall %}
 <div id="vote-box" class="space-y-4">{% include "_vote_box.html" %}</div>
-{% include "_comments.html" %}
 {% if admin %}<div id="proxy-box">{% include "_proxy_box.html" %}</div>{% endif %}
 <div id="live" hx-get="/s/{{ s.id }}/live" hx-trigger="every 20s, voteChanged from:body" hx-swap="innerHTML">
   {% include "_live.html" %}
