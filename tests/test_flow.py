@@ -615,8 +615,8 @@ def test_comments(client, db):
     assert "10분 늦어요" in r.text and "<script>alert" not in r.text        # HTML은 이스케이프
     assert client.post(f"/s/{s.id}/comments", data={"body": "   "}, headers=hx).text.count("내용을 입력") == 1
     home = client.get("/").text
-    assert "한마디" in home and "10분 늦어요" in home          # 한마디는 홈 화면에
-    assert "한마디" not in client.get(f"/s/{s.id}").text
+    assert 'id="comment-list"' in home and "10분 늦어요" in home   # 댓글은 홈 화면에
+    assert 'id="comment-list"' not in client.get(f"/s/{s.id}").text
     cid = ops.list_comments(db, s)[0].id
     # 다른 멤버는 못 지움
     b.position, b.height_cm = "F", 180

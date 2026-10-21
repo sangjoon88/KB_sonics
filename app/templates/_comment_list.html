@@ -1,20 +1,16 @@
-{% if comment_err %}<div class="mb-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{{ comment_err }}</div>{% endif %}
-{% for c in comments %}
+{% if comment_err %}<div class="mb-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-1.5 text-sm">{{ comment_err }}</div>{% endif %}
+{% if comments %}
+<ul class="mb-2 space-y-1">
+  {% for c in comments %}
   {% set mine = me and c.member_id == me.id %}
-  <div class="flex gap-2 py-2 {{ 'border-t border-stone-100' if not loop.first }}">
-    <div class="min-w-0 flex-1">
-      <div class="flex items-baseline gap-2">
-        <span class="text-sm font-semibold {{ 'text-orange-600' if mine }}">{{ c.member.name }}</span>
-        <span class="text-[11px] text-stone-400">{{ fmt_dt(c.created_at) }}</span>
-      </div>
-      <p class="text-sm whitespace-pre-line break-words">{{ c.body }}</p>
-    </div>
+  <li class="flex items-start gap-2 text-sm">
+    <p class="min-w-0 flex-1 break-words whitespace-pre-line"><b class="{{ 'text-orange-600' if mine }}">{{ c.member.name }}</b> {{ c.body }} <span class="text-[10px] text-stone-400 whitespace-nowrap">{{ fmt_dt(c.created_at) }}</span></p>
     {% if mine or admin %}
     <button hx-post="/s/{{ s.id }}/comments/{{ c.id }}/delete" hx-target="#comment-list"
-            hx-confirm="이 글을 지울까요?" aria-label="삭제"
-            class="shrink-0 self-start text-xs text-stone-400 px-1">✕</button>
+            hx-confirm="이 댓글을 지울까요?" aria-label="삭제"
+            class="shrink-0 text-xs text-stone-400 px-1">✕</button>
     {% endif %}
-  </div>
-{% else %}
-  <p class="text-sm text-stone-400 py-2">첫 한마디를 남겨보세요. (예: "10분 늦어요", "공 챙겨갈게요")</p>
-{% endfor %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
