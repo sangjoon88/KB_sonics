@@ -1,6 +1,6 @@
 """멤버/공개 HTML 화면."""
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import (ADMIN_COOKIE, PinResult, clear_cookies, current_admin, current_member, hash_pin,
@@ -8,7 +8,7 @@ from app.auth import (ADMIN_COOKIE, PinResult, clear_cookies, current_admin, cur
 from app.config import DEFAULT_PIN
 from app.config import settings
 from app.db import get_db
-from app.models import ClubSession, Game, Member
+from app.models import ClubSession, Game, Member, SessionComment
 from app.routers.common import redirect, render
 from app.services import ops
 from app.services.balancer import balance_label
@@ -39,7 +39,17 @@ def _attendance_lists(s: ClubSession) -> dict:
     out["early"].sort(key=lambda a: a.leave_time or "")
     out["guests"] = [a for a in out["yes"] if a.member.is_guest]
     out["coming"] = len(out["yes"]) + len(out["early"])  # 조퇴도 참석 인원에 포함
+    # 화면용: 조퇴는 예상 팀에서 시간으로 보여주므로 참석 명단에서는 구분하지 않는다
+    out["attending"] = sorted(out["yes"] + out["early"], key=lambda a: (a.voted_at is None, a.voted_at or 0))
     return out
+
+
+def _pending_voters(db: Session, s: ClubSession) -> list[Member]:
+    """아직 투표하지 않은 활동 멤버 (게스트 제외, 현장 출석 체크된 사람 제외)."""
+    responded = {a.member_id for a in s.attendances if a.vote is not None or a.checked_in}
+    members = db.scalars(select(Member).where(Member.is_active.is_(True), Member.is_guest.is_(False))
+                         .order_by(Member.name)).all()
+    return [m for m in members if m.id not in responded]
 
 
 @router.get("/")
@@ -57,6 +67,8 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
            "voting_open": bool(s and ops.voting_open(s))}
     if s:
         ctx.update(_live_ctx(db, s))
+        ctx["comment_count"] = db.scalar(select(func.count()).select_from(SessionComment)
+                                         .where(SessionComment.session_id == s.id))
     # 지난 경기 결과: 결과가 입력된 가장 최근 모임 (이번 모임 제외)
     last = db.scalar(select(ClubSession).join(Game).where(Game.status == "finished",
                                                          ClubSession.id != (s.id if s else -1))
@@ -213,7 +225,8 @@ def vote_page(request: Request, session_id: int, db: Session = Depends(get_db),
     if (gate := _gate(me, f"/s/{s.id}")) is not None:
         return gate
     ctx = {"s": s, "my_vote": ops.get_attendance(db, s, me.id), "lists": _attendance_lists(s),
-           "voting_open": ops.voting_open(s), "og_session": s, **_live_ctx(db, s)}
+           "voting_open": ops.voting_open(s), "og_session": s, **_live_ctx(db, s),
+           "comments": ops.list_comments(db, s)}
     if admin:
         ctx.update(_proxy_ctx(db, s))
     return render(request, "vote.html", ctx, member=me, admin=admin)
@@ -222,7 +235,9 @@ def vote_page(request: Request, session_id: int, db: Session = Depends(get_db),
 def _live_ctx(db: Session, s: ClubSession) -> dict:
     """투표 현황 + 예상 팀 (팀이 이미 짜였으면 확정 팀 안내)."""
     g1 = ops.get_game(db, s, 1)
-    return {"lists": _attendance_lists(s), "pv": None if g1 else ops.preview_teams(db, s), "g1": g1}
+    lists = _attendance_lists(s)
+    lists["pending"] = _pending_voters(db, s)
+    return {"lists": lists, "pv": None if g1 else ops.preview_teams(db, s), "g1": g1}
 
 
 def _proxy_ctx(db: Session, s: ClubSession) -> dict:
@@ -332,6 +347,51 @@ def guest_remove(request: Request, session_id: int, guest_id: int, db: Session =
     if request.headers.get("HX-Request"):
         return _vote_box(request, db, s, me, err)
     return redirect(f"/s/{s.id}", err=err) if err else redirect(f"/s/{s.id}", msg="게스트를 취소했습니다.")
+
+
+# ---------------------------------------------------------------- 한마디 (댓글)
+
+def _comments(request: Request, db: Session, s: ClubSession, me, admin, err: str | None = None):
+    return render(request, "_comment_list.html", {"s": s, "comments": ops.list_comments(db, s),
+                                                  "comment_err": err}, member=me, admin=admin)
+
+
+@router.get("/s/{session_id}/comments")
+def comments_partial(request: Request, session_id: int, db: Session = Depends(get_db),
+                     me=Depends(current_member), admin=Depends(current_admin)):
+    return _comments(request, db, _session_or_404(db, session_id), me, admin)
+
+
+@router.post("/s/{session_id}/comments")
+def comment_add(request: Request, session_id: int, body: str = Form(""), db: Session = Depends(get_db),
+                me=Depends(current_member), admin=Depends(current_admin)):
+    s = _session_or_404(db, session_id)
+    if me is None:
+        return redirect(f"/s/{s.id}")
+    err = None
+    try:
+        ops.add_comment(db, s, me, body)
+    except ops.OpError as e:
+        err = str(e)
+    if request.headers.get("HX-Request"):
+        return _comments(request, db, s, me, admin, err)
+    return redirect(f"/s/{s.id}#comments", err=err) if err else redirect(f"/s/{s.id}#comments")
+
+
+@router.post("/s/{session_id}/comments/{comment_id}/delete")
+def comment_delete(request: Request, session_id: int, comment_id: int, db: Session = Depends(get_db),
+                   me=Depends(current_member), admin=Depends(current_admin)):
+    s = _session_or_404(db, session_id)
+    if me is None:
+        return redirect(f"/s/{s.id}")
+    err = None
+    try:
+        ops.delete_comment(db, s, comment_id, actor=me, admin=admin)
+    except ops.OpError as e:
+        err = str(e)
+    if request.headers.get("HX-Request"):
+        return _comments(request, db, s, me, admin, err)
+    return redirect(f"/s/{s.id}#comments", err=err) if err else redirect(f"/s/{s.id}#comments")
 
 
 # ---------------------------------------------------------------- 오늘 경기

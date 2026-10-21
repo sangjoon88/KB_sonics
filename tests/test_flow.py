@@ -277,7 +277,9 @@ def test_early_leave_vote(client, db):
     assert a.vote == "early" and a.leave_time == "15:30"
     assert r.headers.get("HX-Trigger") == "voteChanged"
     live = client.get(f"/s/{s.id}/live").text
-    assert "⏰15:30" in live and "조퇴 1 포함" in live
+    assert "조퇴맨" in live.split("참석", 1)[1]          # 조퇴도 참석 명단에 (시간은 예상 팀에서 표시)
+    a_after = ops.get_attendance(db, s, m.id)
+    assert a_after.leave_time == "15:30"
     # 참석으로 바꾸면 조퇴 시간은 지워진다
     client.post(f"/s/{s.id}/vote", data={"vote": "yes", "leave_time": "15:30"}, headers=hx)
     db.refresh(a)
@@ -596,3 +598,48 @@ def test_game2_remove_player(client, db):
     # 결과 입력 후엔 뺄 수 없고, 버튼도 안 보인다
     ops.submit_result(db, admin, g2, 30, 28)
     assert "/game/2/remove/" not in client.get(f"/admin/s/{s.id}/game/2/lineup").text
+
+
+def test_comments(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    a, b = Member(name="댓글A"), Member(name="댓글B")
+    db.add_all([a, b])
+    db.commit()
+    s = ops.create_session(db, admin, _dt.date(2099, 6, 7))
+    hx = {"HX-Request": "true"}
+    _login_as(client, db, a)
+    a.position, a.height_cm = "G", 175
+    db.commit()
+    r = client.post(f"/s/{s.id}/comments", data={"body": "10분 늦어요 <script>alert(1)</script>"}, headers=hx)
+    assert "10분 늦어요" in r.text and "<script>alert" not in r.text        # HTML은 이스케이프
+    assert client.post(f"/s/{s.id}/comments", data={"body": "   "}, headers=hx).text.count("내용을 입력") == 1
+    assert "한마디" in client.get(f"/s/{s.id}").text
+    cid = ops.list_comments(db, s)[0].id
+    # 다른 멤버는 못 지움
+    b.position, b.height_cm = "F", 180
+    db.commit()
+    _login_as(client, db, b)
+    r = client.post(f"/s/{s.id}/comments/{cid}/delete", headers=hx)
+    assert "내가 쓴 글만" in r.text and len(ops.list_comments(db, s)) == 1
+    # 운영진은 지울 수 있음
+    client.cookies.clear()
+    client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"})
+    client.post(f"/s/{s.id}/comments/{cid}/delete", headers=hx)
+    assert ops.list_comments(db, s) == []
+
+
+def test_pending_voters_and_merged_early(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    x, y, z = Member(name="일찍감", position="G", height_cm=175), Member(name="안옴", position="F", height_cm=180), \
+        Member(name="미투표자", position="C", height_cm=190)
+    db.add_all([x, y, z])
+    db.commit()
+    s = ops.create_session(db, admin, _dt.date(2099, 6, 14))
+    ops.vote(db, s, x, "early", "09:00")
+    ops.vote(db, s, y, "no")
+    live = client.get(f"/s/{s.id}/live").text
+    assert "아직 투표 안 함 2명" in live and "미투표자" in live            # 관리자 본인 + 미투표자
+    assert "조퇴" not in live.split("오는 사람", 1)[1]                      # 참석 현황에는 조퇴 구분 없음
+    assert "일찍감" in live

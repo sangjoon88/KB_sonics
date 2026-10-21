@@ -147,6 +147,19 @@ class RatingHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_kst)
 
 
+class SessionComment(Base):
+    """경기(투표)별 한마디."""
+    __tablename__ = "session_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), index=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("members.id"))
+    body: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_kst)
+
+    member: Mapped[Member] = relationship()
+
+
 class AppSetting(Base):
     """운영진 설정 (밸런스 모드 등)."""
     __tablename__ = "app_settings"

@@ -12,7 +12,7 @@ from app.auth import default_pin_hash
 from app.config import (BALANCE_MODES, DEFAULT_LOCATION, DEFAULT_PIN, SESSION_START_TIME, EXHAUSTIVE_MAX_PLAYERS, GRADE_DISAGREE_THRESHOLD,
                         INACTIVE_WEEKS, INITIAL_SIGMA, REPEAT_LOOKBACK_WEEKS, TOP_K_CANDIDATES,
                         WEIGHTS)
-from app.models import (POSITIONS, VOTES, AdminLog, AppSetting, Attendance, ClubSession, Game,
+from app.models import (POSITIONS, VOTES, AdminLog, AppSetting, Attendance, ClubSession, Game, SessionComment,
                         GameRoster, InitialRating, Member, RatingHistory)
 from app.services import balancer, lopsided, rating
 from app.services.stats import last_attended
@@ -775,3 +775,42 @@ def submit_result(db: Session, admin: Member, game: Game, score_a: int, score_b:
 def _has_later_rated(db: Session, game: Game) -> bool:
     return db.scalar(select(func.count()).select_from(Game).join(ClubSession).where(
         Game.rated.is_(True), ClubSession.date > game.session.date)) > 0
+
+
+# ---------------------------------------------------------------- 한마디 (댓글)
+
+COMMENT_MAX_LEN = 300
+COMMENT_LIST_LIMIT = 100
+
+
+def list_comments(db: Session, s: ClubSession) -> list[SessionComment]:
+    """오래된 것부터 (최근 100개)."""
+    rows = db.scalars(select(SessionComment).where(SessionComment.session_id == s.id)
+                      .options(selectinload(SessionComment.member))
+                      .order_by(SessionComment.id.desc()).limit(COMMENT_LIST_LIMIT)).all()
+    return list(reversed(rows))
+
+
+def add_comment(db: Session, s: ClubSession, member: Member, body: str) -> SessionComment:
+    body = (body or "").strip()
+    if not body:
+        raise OpError("내용을 입력하세요.")
+    if len(body) > COMMENT_MAX_LEN:
+        raise OpError(f"{COMMENT_MAX_LEN}자까지 쓸 수 있어요.")
+    c = SessionComment(session_id=s.id, member_id=member.id, body=body)
+    db.add(c)
+    db.commit()
+    return c
+
+
+def delete_comment(db: Session, s: ClubSession, comment_id: int, *, actor: Member,
+                   admin: Member | None = None) -> None:
+    c = db.get(SessionComment, comment_id)
+    if c is None or c.session_id != s.id:
+        raise OpError("댓글이 없습니다.")
+    if c.member_id != actor.id and admin is None:
+        raise OpError("내가 쓴 글만 지울 수 있어요.")
+    if admin is not None and c.member_id != actor.id:
+        log(db, admin, "comment.delete", f"session:{s.id}", {"author": c.member.name, "body": c.body[:100]})
+    db.delete(c)
+    db.commit()
