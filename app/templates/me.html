@@ -3,7 +3,7 @@
 {% block title %}내 기록{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between">
-  <h1 class="text-2xl font-bold"><span class="tabular-nums text-lg font-black text-stone-400 mr-1">{{ me.back_number or '-' }}</span>{{ me.name }} {{ pos_badges(me) }}</h1>
+  <h1 class="text-2xl font-bold">{% if me.back_number %}<span class="tabular-nums text-lg font-black text-stone-400 mr-1.5">No.{{ me.back_number }}</span>{% endif %}{{ me.name }} {{ pos_badges(me) }}</h1>
   <a href="/logout" class="text-xs text-stone-500 underline">로그아웃</a>
 </div>
 <div class="grid grid-cols-3 gap-2">

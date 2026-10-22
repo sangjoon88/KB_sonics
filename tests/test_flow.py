@@ -682,10 +682,10 @@ def test_back_number(client, db):
     for m in [admin, *ps]:
         ops.vote(db, s, m, "yes")
     live = client.get(f"/s/{s.id}/live").text
-    assert ">23</span>n0" in live                       # 이름 앞 백넘버
+    assert ">#23</span>n0" in live                       # 이름 앞 백넘버
     assert ">-</span>n1" in live                        # 없으면 '-'
     ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *ps]})
     pv = client.get(f"/s/{s.id}/preview").text
-    assert ">23</span>" in pv
+    assert ">#23</span>" in pv
     # 예상 팀은 주 포지션만 (부 포지션 뱃지는 opacity-50 으로 붙는다)
     assert "opacity-50" not in pv

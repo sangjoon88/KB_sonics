@@ -22,9 +22,9 @@
 {% if m.is_guest %}<span class="text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
 {%- endmacro %}
 
-{# 백넘버: 이름 앞에 표시, 없으면 '-' #}
+{# 백넘버: 이름 앞에 '#23', 없으면 '-' #}
 {% macro bn(m, cls='') -%}
-<span class="shrink-0 tabular-nums text-[11px] font-bold text-stone-400 {{ 'inline-block min-w-[1.25rem] text-right' if not cls else cls }}">{{ m.back_number if m.back_number else '-' }}</span>
+<span class="shrink-0 tabular-nums text-[11px] font-bold text-stone-400 {{ 'inline-block min-w-[1.75rem] text-right' if not cls else cls }}">{{ ('#' ~ m.back_number) if m.back_number else '-' }}</span>
 {%- endmacro %}
 
 {# 조퇴 시각 (작게) #}
