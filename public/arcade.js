@@ -368,7 +368,8 @@
       g.fillStyle = 'rgba(15,11,22,.55)'; g.fillRect(0, 34, W, 140);
       text('3PT', 80, 70, C.gold, 16, 'center');
       text('CONTEST', 80, 92, C.gold, 8, 'center');
-      text('HOLD & RELEASE', 80, 120, C.white, 5, 'center');
+      if (Math.floor(now / 600) % 2 === 0) text('TAP TO START', 80, 120, C.white, 6, 'center');
+      text('HOLD & RELEASE TO SHOOT', 80, 140, '#c9bedb', 4, 'center');
     } else if (S.phase === 'count') {
       const n = Math.ceil(S.countT / 0.6);
       text(n > 3 ? '' : n >= 1 ? String(n) : '', 80, 92, C.white, 16, 'center');
@@ -378,6 +379,7 @@
       g.fillStyle = 'rgba(15,11,22,.55)'; g.fillRect(0, 60, W, 70);
       text(allShot() && !S.timeUp ? 'FINISH!' : 'TIME UP!', 80, 78, C.gold, 10, 'center');
       text(`${S.score} PTS`, 80, 100, C.white, 8, 'center');
+      if (now - S.endT > 1500 && Math.floor(now / 600) % 2 === 0) text('TAP TO RETRY', 80, 118, '#c9bedb', 5, 'center');
     }
   }
   const ballSize = b => b.state === 'bounce' ? 3 : Math.max(3, Math.round(5 - 2 * Math.min(1, b.u)));
@@ -393,7 +395,14 @@
 
   // ---------------------------------------------------------------- 입력
   const stage = document.getElementById('stage');
-  stage.addEventListener('pointerdown', e => { e.preventDefault(); stage.setPointerCapture?.(e.pointerId); press(performance.now()); });
+  stage.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const now = performance.now();
+    // 대기 화면이나 결과 화면에서는 코트를 눌러도 시작
+    if (S.phase === 'idle' || (S.phase === 'end' && now - S.endT > 1500)) { start(); return; }
+    try { stage.setPointerCapture(e.pointerId); } catch (_) { /* 일부 브라우저 미지원 */ }
+    press(now);
+  });
   const up = e => { e.preventDefault(); release(performance.now()); };
   stage.addEventListener('pointerup', up);
   stage.addEventListener('pointercancel', up);
@@ -414,7 +423,10 @@
     });
   }
 
+  let starting = false;
   async function start() {
+    if (starting || S.phase === 'count' || S.phase === 'play') return;
+    starting = true;
     showErr('');
     startBtn.disabled = true; againBtn.disabled = true;
     try {
@@ -429,6 +441,7 @@
     } catch (e) {
       showErr(e.message);
     } finally {
+      starting = false;
       startBtn.disabled = false; againBtn.disabled = false;
     }
   }

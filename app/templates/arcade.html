@@ -26,7 +26,7 @@
 
 <div id="controls">
   <button id="start" type="button" class="w-full rounded-xl bg-orange-600 text-white text-lg font-bold py-4 active:opacity-80 disabled:opacity-50">▶ 시작하기</button>
-  <p id="hint" class="mt-2 text-center text-xs text-stone-500">화면을 <b>누르고 있으면</b> 게이지가 움직여요. <b class="text-emerald-700">초록 구간</b>에서 떼면 골!</p>
+  <p id="hint" class="mt-2 text-center text-xs text-stone-500">코트나 시작 버튼을 누르면 시작! 슛은 화면을 <b>누르고 있으면</b> 게이지가 움직여요. <b class="text-emerald-700">초록 구간</b>에서 떼면 골!</p>
   <div id="result" class="hidden rounded-xl bg-white border border-stone-200 p-4 text-center">
     <div class="text-sm text-stone-500" id="r-title">기록</div>
     <div class="pixel text-4xl text-orange-600 my-2" id="r-score">0</div>
@@ -63,5 +63,5 @@
 </script>
 <script type="application/json" id="arcade-cfg">{{ {"seconds": game_seconds, "racks": racks, "balls": balls,
   "num": me.back_number or "", "pos": me.position or "F"}|tojson }}</script>
-<script src="/arcade.js?v=2" defer></script>
+<script src="/arcade.js?v=3" defer></script>
 {% endblock %}
