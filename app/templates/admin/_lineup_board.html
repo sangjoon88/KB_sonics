@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag %}
+{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag, leave %}
 {% set editable = game.status != 'finished' %}
 {% set can_remove = editable and no == 2 %}
 <div class="space-y-3">
@@ -24,7 +24,7 @@
           </span>
           <span class="flex items-center gap-1.5 mt-0.5 text-[10px] text-stone-400 whitespace-nowrap overflow-hidden">
             <span>{{ m.height_cm ~ 'cm' if m.height_cm else '키 ?' }}</span>
-            {% if early and early.get(m.id) %}<span class="text-amber-700">⏰{{ early[m.id] }}</span>{% endif %}
+            {{ leave(early.get(m.id) if early) }}
             {{ guest_tag(m) }}
           </span>
         </button>

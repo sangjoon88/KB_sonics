@@ -646,4 +646,6 @@ def test_pending_voters_and_merged_early(client, db):
     assert "조퇴" not in live.split("오는 사람", 1)[1]                      # 참석 현황에는 조퇴 구분 없음
     assert "일찍감" in live
     home = client.get("/").text
-    assert "미투표 2명" in home and "미투표자" not in home         # 홈은 숫자만
+    assert "미투표 2명" in home                                    # 홈은 숫자 배지, 누르면 이름 목록
+    assert 'id="pending-list"' in home and "미투표자" in home.split('id="pending-list"', 1)[1]
+

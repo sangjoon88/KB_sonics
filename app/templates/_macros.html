@@ -22,6 +22,11 @@
 {% if m.is_guest %}<span class="text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
 {%- endmacro %}
 
+{# 조퇴 시각 (작게) #}
+{% macro leave(t) -%}
+{% if t %}<span class="shrink-0 whitespace-nowrap text-[9px] leading-none text-amber-700">⏰{{ t }}</span>{% endif %}
+{%- endmacro %}
+
 {% macro pos_badges(m) -%}
 {{ pos_badge(m.position) }}{% if m.position2 %}<span class="opacity-50 ml-0.5">{{ pos_badge(m.position2) }}</span>{% endif %}
 {%- endmacro %}

@@ -4,7 +4,7 @@
   {% for c in comments %}
   {% set mine = me and c.member_id == me.id %}
   <li class="flex items-start gap-2 text-sm">
-    <p class="min-w-0 flex-1 break-words whitespace-pre-line"><b class="{{ 'text-orange-600' if mine }}">{{ c.member.name }}</b> {{ c.body }} <span class="text-[10px] text-stone-400 whitespace-nowrap">{{ fmt_dt(c.created_at) }}</span></p>
+    <p class="min-w-0 flex-1 break-words whitespace-pre-line"><b class="font-semibold {{ 'text-orange-600' if mine else 'text-sky-700' }}">{{ c.member.name }}</b> {{ c.body }} <span class="text-[10px] text-stone-400 whitespace-nowrap">{{ fmt_dt(c.created_at) }}</span></p>
     {% if mine or admin %}
     <button hx-post="/s/{{ s.id }}/comments/{{ c.id }}/delete" hx-target="#comment-list"
             hx-confirm="이 댓글을 지울까요?" aria-label="삭제"
