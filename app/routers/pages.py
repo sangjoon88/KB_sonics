@@ -10,7 +10,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import ClubSession, Game, Member
 from app.routers.common import redirect, render
-from app.services import ops
+from app.services import arcade, ops
 from app.services.balancer import balance_label
 from app.services.stats import compute_stats, leaderboard, member_summary, winrate_min_games
 from app.timeutil import today_kst
@@ -79,6 +79,9 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
         "top_streak": [x for x in leaderboard(stats, "streak") if x.best_streak > 0][:3],
         "member_summary": member_summary(db, today_kst()),
     })
+    week = arcade.leaderboard(db, *arcade.week_range())
+    ctx["arcade_top"] = [r for r in week if r.rank == 1]
+    ctx["arcade_me"] = arcade.find(week, me.id)
     return render(request, "home.html", ctx, member=me, admin=admin)
 
 

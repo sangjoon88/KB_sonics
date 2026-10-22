@@ -1,0 +1,40 @@
+{% from "_macros.html" import card, bn %}
+{% set tab = tab or 'week' %}
+{% call card() %}
+  <div class="flex items-center justify-between">
+    <div class="font-bold">🏆 랭킹</div>
+    <div class="grid grid-cols-2 gap-1 bg-stone-200 rounded-lg p-0.5 text-xs" role="tablist">
+      {% for key, label in [('week', '이번 주'), ('season', season ~ ' 시즌')] %}
+      <button type="button" role="tab" data-tab="{{ key }}" aria-selected="{{ 'true' if tab == key else 'false' }}"
+              onclick="arcadeTab('{{ key }}')"
+              class="arcade-tab rounded-md px-3 py-1 {{ 'bg-white font-bold shadow-sm' if tab == key else 'text-stone-600' }}">{{ label }}</button>
+      {% endfor %}
+    </div>
+  </div>
+  {% for key, rows, mine in [('week', week_rows, my_week), ('season', season_rows, my_season)] %}
+  <div data-panel="{{ key }}" class="{{ '' if tab == key else 'hidden' }}">
+    {% if key == 'week' %}<p class="mt-1 text-[11px] text-stone-500">월~일 최고 점수 · 일요일 경기 날이 마지막 날이에요</p>
+    {% else %}<p class="mt-1 text-[11px] text-stone-500">시즌 최고 점수 (만점 {{ max_score }}점)</p>{% endif %}
+    {% if rows %}
+    <ol class="mt-2 divide-y divide-stone-100">
+      {% for r in rows[:top_n] %}
+      <li class="flex items-center gap-2 py-2 text-sm {{ 'bg-orange-50 -mx-2 px-2 rounded-lg font-bold' if me and r.member.id == me.id }}">
+        <span class="w-6 text-center shrink-0">{{ {1: '🥇', 2: '🥈', 3: '🥉'}.get(r.rank, r.rank) }}</span>
+        {{ bn(r.member) }}<span class="truncate flex-1">{{ r.member.name }}</span>
+        <span class="tabular-nums font-bold text-orange-600">{{ r.score }}<span class="text-[10px] font-normal text-stone-400">점</span></span>
+      </li>
+      {% endfor %}
+      {% if mine and mine not in rows[:top_n] %}
+      <li class="flex items-center gap-2 py-2 text-sm bg-orange-50 -mx-2 px-2 rounded-lg font-bold">
+        <span class="w-6 text-center shrink-0">{{ mine.rank }}</span>
+        {{ bn(mine.member) }}<span class="truncate flex-1">{{ mine.member.name }}</span>
+        <span class="tabular-nums text-orange-600">{{ mine.score }}<span class="text-[10px] font-normal text-stone-400">점</span></span>
+      </li>
+      {% endif %}
+    </ol>
+    {% else %}
+    <p class="mt-3 text-sm text-stone-500">아직 기록이 없어요. 첫 {{ '주간 ' if key == 'week' }}슛왕이 되어보세요! 🏀</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% endcall %}

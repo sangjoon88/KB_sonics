@@ -167,3 +167,19 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(50), primary_key=True)
     value: Mapped[str] = mapped_column(String(200))
+
+
+class ArcadeRun(Base):
+    """미니게임 한 판 (3점슛 콘테스트). 시작할 때 만들고, 끝나면 점수를 한 번만 기록한다."""
+    __tablename__ = "arcade_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("members.id"), index=True)
+    game: Mapped[str] = mapped_column(String(20), default="three_pt")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=now_kst)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    score: Mapped[int | None] = mapped_column(Integer)
+    made: Mapped[int | None] = mapped_column(Integer)      # 성공한 공 수 (머니볼 포함)
+
+    member: Mapped[Member] = relationship()
+

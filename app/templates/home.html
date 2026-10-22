@@ -69,6 +69,24 @@
   </div>
 {% endif %}
 
+{# ---- 미니게임: 이번 주 슛왕 ---- #}
+<a href="/arcade" class="block bg-white rounded-xl border border-stone-200 px-4 py-3">
+  <div class="flex items-center gap-3">
+    <div class="text-3xl leading-none">🏀</div>
+    <div class="min-w-0 flex-1">
+      <div class="text-xs text-stone-500">3점슛 콘테스트 · 이번 주 슛왕</div>
+      {% if arcade_top %}
+      <div class="font-bold truncate">🏆 {% for r in arcade_top %}{{ bn(r.member, 'mr-0.5') }}{{ r.member.name }}{{ ', ' if not loop.last }}{% endfor %}
+        <span class="text-orange-600 tabular-nums">{{ arcade_top[0].score }}점</span></div>
+      {% else %}
+      <div class="font-bold">아직 없어요 — 첫 슛왕에 도전!</div>
+      {% endif %}
+      {% if arcade_me %}<div class="text-[11px] text-stone-500">내 최고 {{ arcade_me.score }}점 · {{ arcade_me.rank }}위</div>{% endif %}
+    </div>
+    <span class="shrink-0 rounded-lg bg-orange-600 text-white text-sm font-bold px-3 py-2">도전 ›</span>
+  </div>
+</a>
+
 {# ---- 내 시즌 기록 ---- #}
 {% if my_st %}
 <a href="/me" class="block">

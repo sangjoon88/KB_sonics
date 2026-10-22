@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block title %}3점슛 콘테스트{% endblock %}
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  #stage { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #court { image-rendering: pixelated; image-rendering: crisp-edges; width: 100%; height: auto; display: block; }
+  .pixel { font-family: "Press Start 2P", ui-monospace, monospace; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="flex items-end justify-between">
+  <div>
+    <h1 class="text-xl font-bold">🏀 3점슛 콘테스트</h1>
+    <p class="text-xs text-stone-500">{{ game_seconds }}초 · 5지점 × 공 5개 · 최대 30점</p>
+  </div>
+  <div id="my-week" class="text-right text-xs text-stone-500 {{ '' if my_week else 'hidden' }}">이번 주 내 최고<div class="text-lg font-black text-orange-600 tabular-nums"><span id="my-week-score">{{ my_week.score if my_week }}</span>점 <span class="text-xs font-semibold text-stone-500"><span id="my-week-rank">{{ my_week.rank if my_week }}</span>위</span></div></div>
+</div>
+
+<div id="stage" class="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-900">
+  <canvas id="court" width="160" height="208" aria-label="3점슛 게임 화면"></canvas>
+</div>
+
+<div id="controls">
+  <button id="start" type="button" class="w-full rounded-xl bg-orange-600 text-white text-lg font-bold py-4 active:opacity-80 disabled:opacity-50">▶ 시작하기</button>
+  <p id="hint" class="mt-2 text-center text-xs text-stone-500">화면을 <b>누르고 있으면</b> 게이지가 움직여요. <b class="text-emerald-700">초록 구간</b>에서 떼면 골!</p>
+  <div id="result" class="hidden rounded-xl bg-white border border-stone-200 p-4 text-center">
+    <div class="text-sm text-stone-500" id="r-title">기록</div>
+    <div class="pixel text-4xl text-orange-600 my-2" id="r-score">0</div>
+    <div class="text-sm" id="r-made"></div>
+    <div class="mt-2 text-sm font-semibold" id="r-msg"></div>
+    <button id="again" type="button" class="mt-4 w-full rounded-xl bg-orange-600 text-white font-bold py-3 active:opacity-80">↻ 다시 하기</button>
+  </div>
+  <p id="err" class="hidden mt-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm"></p>
+</div>
+
+<details class="bg-white rounded-xl border border-stone-200 px-4 py-3 text-sm">
+  <summary class="font-semibold cursor-pointer">규칙</summary>
+  <ul class="mt-2 space-y-1 text-stone-600 list-disc pl-5">
+    <li>왼쪽 코너부터 오른쪽 코너까지 5지점에서 공 5개씩, 총 25개를 {{ game_seconds }}초 안에 던져요.</li>
+    <li>화면을 누르고 있으면 게이지가 오르내려요. 초록 구간에서 손을 떼면 골, 가운데에 가까울수록 <b>스위시</b>!</li>
+    <li>랙마다 마지막 <b class="text-amber-700">골드 공(머니볼)은 2점</b>이에요.</li>
+    <li><b>3개 연속</b>으로 넣으면 🔥 ON FIRE — 놓칠 때까지 초록 구간이 넓어져요.</li>
+    <li>버저 전에 손을 떠난 공은 들어가면 점수로 인정돼요.</li>
+  </ul>
+</details>
+
+<div id="ranking">{% include "_arcade_ranking.html" %}</div>
+
+<script>
+  function arcadeTab(key) {
+    document.querySelectorAll('#ranking [data-panel]').forEach(el => el.classList.toggle('hidden', el.dataset.panel !== key));
+    document.querySelectorAll('#ranking .arcade-tab').forEach(b => {
+      const on = b.dataset.tab === key;
+      b.setAttribute('aria-selected', on);
+      b.classList.toggle('bg-white', on); b.classList.toggle('font-bold', on); b.classList.toggle('shadow-sm', on);
+      b.classList.toggle('text-stone-600', !on);
+    });
+  }
+</script>
+<script type="application/json" id="arcade-cfg">{{ {"seconds": game_seconds, "racks": racks, "balls": balls,
+  "num": me.back_number or "", "pos": me.position or "F"}|tojson }}</script>
+<script src="/arcade.js?v=2" defer></script>
+{% endblock %}

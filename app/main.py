@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.auth import AdminRequired
-from app.routers import admin, api, pages
+from app.routers import admin, api, arcade, pages
 from app.routers.common import PinChangeRequired
 from app.services.ops import OpError
 
@@ -37,6 +37,12 @@ def favicon():
     return FileResponse(PUBLIC_DIR / "favicon.svg", media_type="image/svg+xml")
 
 
+@app.get("/arcade.js", include_in_schema=False)
+def arcade_js():
+    return FileResponse(PUBLIC_DIR / "arcade.js", media_type="text/javascript")
+
+
 app.include_router(api.router)
 app.include_router(admin.router)
+app.include_router(arcade.router)
 app.include_router(pages.router)

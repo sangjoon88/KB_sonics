@@ -11,6 +11,7 @@
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#552583">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  {% block head %}{% endblock %}
   <script>
     // 다크 모드 기본. 사용자가 라이트로 바꾸면 이 기기에 기억한다.
     try { if (localStorage.getItem('theme') !== 'light') document.documentElement.classList.add('dark'); }
@@ -140,9 +141,10 @@
   </main>
 
   <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
-    <div class="max-w-xl mx-auto grid {{ 'grid-cols-4' if admin else 'grid-cols-3' }} text-center text-xs">
+    <div class="max-w-xl mx-auto grid {{ 'grid-cols-5' if admin else 'grid-cols-4' }} text-center text-xs">
       <a href="/" class="py-3">🏠<div>홈</div></a>
       <a href="/stats" class="py-3">📊<div>기록</div></a>
+      <a href="/arcade" class="py-3">🏀<div>게임</div></a>
       <a href="/me" class="py-3">🙋<div>내 기록</div></a>
       {% if admin %}<a href="/admin" class="py-3">🛠️<div>운영진</div></a>{% endif %}
     </div>
