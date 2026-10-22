@@ -186,7 +186,7 @@ def profile(request: Request, next: str = "/", first: int = 0, me=Depends(curren
 
 @router.post("/profile")
 def profile_post(position: str = Form(""), position2: str = Form(""), height: str = Form(""),
-                 weight: str = Form(""), next: str = Form("/"),
+                 weight: str = Form(""), back_number: str = Form(""), next: str = Form("/"),
                  db: Session = Depends(get_db), me=Depends(current_member)):
     if me is None:
         return redirect("/pick")
@@ -198,7 +198,8 @@ def profile_post(position: str = Form(""), position2: str = Form(""), height: st
         if h is None:
             raise ValueError("키를 입력하세요.")
         ops.update_member(db, None, me, position=position, height=h,
-                          position2=position2 or None, weight=ops.parse_weight(weight))
+                          position2=position2 or None, weight=ops.parse_weight(weight),
+                          back_number=ops.parse_back_number(back_number))
     except (ValueError, ops.OpError) as e:
         return redirect(f"/profile?next={nxt}", err=str(e))
     return redirect(nxt, msg="내 정보를 저장했습니다.")

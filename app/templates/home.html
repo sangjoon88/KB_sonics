@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls, place %}
+{% from "_macros.html" import card, btn_cls, place, bn %}
 {% block content %}
 <div class="flex items-end justify-between">
   <div>
@@ -38,7 +38,7 @@
     <div id="pending-list" class="hidden mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
       <div class="text-xs font-semibold text-red-700">🙋 아직 투표 안 한 사람</div>
       <div class="mt-1.5 flex flex-wrap gap-1">
-        {% for m in lists.pending %}<span class="text-sm bg-white border border-red-200 text-red-700 rounded px-2 py-0.5 {{ 'font-bold' if m.id == me.id }}">{{ m.name }}</span>{% endfor %}
+        {% for m in lists.pending %}<span class="text-sm bg-white border border-red-200 text-red-700 rounded px-2 py-0.5 {{ 'font-bold' if m.id == me.id }}">{{ bn(m, 'mr-0.5') }}{{ m.name }}</span>{% endfor %}
       </div>
     </div>
     {% endif %}

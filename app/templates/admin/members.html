@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls, pos_badge, pos_badges, position_selects %}
+{% from "_macros.html" import card, btn_cls, pos_badge, pos_badges, position_selects, bn %}
 {% block title %}멤버 관리{% endblock %}
 {% block content %}
 {% set active = '/admin/members' %}{% include "admin/_nav.html" %}
@@ -21,7 +21,7 @@
 {% for m in members %}
   <details class="bg-white rounded-xl border border-stone-200 {{ 'opacity-50' if not m.is_active }}">
     <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer list-none">
-      <span class="font-semibold">{{ m.name }}</span> {{ pos_badges(m) }}
+      {{ bn(m) }}<span class="font-semibold">{{ m.name }}</span> {{ pos_badges(m) }}
       <span class="text-xs text-stone-500">{{ (m.height_cm ~ 'cm') if m.height_cm else '키?' }}</span>
       {% if m.initial_grade is none %}<span class="text-[10px] bg-amber-100 text-amber-800 rounded px-1">등급 미확정</span>{% endif %}
       {% if m.is_owner %}<span class="text-[10px] bg-orange-600 text-white rounded px-1">👑 관리자</span>{% elif m.is_admin %}<span class="text-[10px] bg-stone-800 text-white rounded px-1">🛡️ 운영진</span>{% endif %}
@@ -40,9 +40,10 @@
           <option value="">부 포지션 없음</option>
           {% for p in ['G','F','C'] %}<option value="{{ p }}" {{ 'selected' if m.position2 == p }}>부 {{ POS_LABEL[p] }}</option>{% endfor %}
         </select>
+        <input name="back_number" value="{{ m.back_number or '' }}" inputmode="numeric" maxlength="2" placeholder="백넘버" class="col-span-2 border border-stone-300 rounded-lg px-2 py-2">
         <input name="height" value="{{ m.height_cm or '' }}" inputmode="numeric" placeholder="키(cm)" class="col-span-2 border border-stone-300 rounded-lg px-2 py-2">
         <input name="weight" value="{{ m.weight_kg or '' }}" inputmode="numeric" placeholder="몸무게(kg)" class="col-span-2 border border-stone-300 rounded-lg px-2 py-2">
-        <label class="col-span-2 flex items-center gap-1"><input type="checkbox" name="is_active" value="1" {{ 'checked' if m.is_active }}> 활동</label>
+        <label class="col-span-6 flex items-center gap-1"><input type="checkbox" name="is_active" value="1" {{ 'checked' if m.is_active }}> 활동</label>
         <button class="col-span-6 bg-stone-800 text-white rounded-lg py-2">저장</button>
       </form>
       {% if not m.is_owner %}

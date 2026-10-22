@@ -649,3 +649,43 @@ def test_pending_voters_and_merged_early(client, db):
     assert "미투표 2명" in home                                    # 홈은 숫자 배지, 누르면 이름 목록
     assert 'id="pending-list"' in home and "미투표자" in home.split('id="pending-list"', 1)[1]
 
+
+def test_back_number(client, db):
+    """백넘버: 본인이 내 정보에서 수정, 없으면 '-', 팀/참석 명단에 이름 앞 표시."""
+    import datetime as _dt
+    import pytest
+    assert ops.parse_back_number("") is None and ops.parse_back_number("-") is None
+    assert ops.parse_back_number("07") == "7" and ops.parse_back_number("00") == "00" and ops.parse_back_number("#32") == "32"
+    for bad in ("100", "a1", "-3"):
+        with pytest.raises(ValueError):
+            ops.parse_back_number(bad)
+
+    admin = _login_admin(client, db)
+    ps = [Member(name=f"n{i}", position="GFC"[i % 3], position2="GFC"[(i + 1) % 3], height_cm=175 + i) for i in range(4)]
+    db.add_all(ps)
+    db.commit()
+    me = ps[0]
+    _login_as(client, db, me)
+    r = client.post("/profile", data={"position": "G", "height": "180", "back_number": "23", "next": "/"},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    db.expire_all()
+    assert me.back_number == "23"
+    assert 'value="23"' in client.get("/profile").text
+    r = client.post("/profile", data={"position": "G", "height": "180", "back_number": "123", "next": "/"},
+                    follow_redirects=False)
+    assert "err=" in r.headers["location"]
+    db.expire_all()
+    assert me.back_number == "23"
+
+    s = ops.create_session(db, admin, _dt.date(2099, 7, 5))
+    for m in [admin, *ps]:
+        ops.vote(db, s, m, "yes")
+    live = client.get(f"/s/{s.id}/live").text
+    assert ">23</span>n0" in live                       # 이름 앞 백넘버
+    assert ">-</span>n1" in live                        # 없으면 '-'
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in [admin, *ps]})
+    pv = client.get(f"/s/{s.id}/preview").text
+    assert ">23</span>" in pv
+    # 예상 팀은 주 포지션만 (부 포지션 뱃지는 opacity-50 으로 붙는다)
+    assert "opacity-50" not in pv

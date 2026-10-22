@@ -88,6 +88,16 @@ def parse_weight(raw: str | None) -> int | None:
     return int(m.group(1))
 
 
+def parse_back_number(raw: str | None) -> str | None:
+    """백넘버: 0~99 (00 허용). 빈 값은 없음(None). 앞자리 0은 정리 (07 → 7)."""
+    v = (raw or "").strip().lstrip("#").strip()
+    if v in ("", "-"):
+        return None
+    if not re.fullmatch(r"\d{1,2}", v):
+        raise ValueError("백넘버는 0~99 숫자 (00도 가능)")
+    return v if v == "00" else str(int(v))
+
+
 def parse_height(raw: str | None) -> int | None:
     if raw is None or str(raw).strip() == "":
         return None
@@ -133,11 +143,12 @@ _UNSET = object()
 
 def update_member(db: Session, admin: Member | None, m: Member, *, name: str | None = None,
                   position: str | None = None, height: int | None = None,
-                  is_active: bool | None = None, position2=_UNSET, weight=_UNSET) -> None:
-    """None 은 '변경 안 함'. position="" 은 지우기. position2/weight 는 명시하면 None 으로도 설정."""
+                  is_active: bool | None = None, position2=_UNSET, weight=_UNSET,
+                  back_number=_UNSET) -> None:
+    """None 은 '변경 안 함'. position="" 은 지우기. position2/weight/back_number 는 명시하면 None 으로도 설정."""
     def snap():
         return {"name": m.name, "position": m.position, "position2": m.position2, "height_cm": m.height_cm,
-                "weight_kg": m.weight_kg, "is_active": m.is_active}
+                "weight_kg": m.weight_kg, "back_number": m.back_number, "is_active": m.is_active}
     before = snap()
     if name is not None and name.strip() and name.strip() != m.name:
         if db.scalar(select(Member).where(Member.name == name.strip(), Member.id != m.id)):
@@ -160,6 +171,8 @@ def update_member(db: Session, admin: Member | None, m: Member, *, name: str | N
         m.height_cm = height
     if weight is not _UNSET:
         m.weight_kg = weight
+    if back_number is not _UNSET:
+        m.back_number = back_number
     if is_active is not None:
         m.is_active = is_active
     after = snap()

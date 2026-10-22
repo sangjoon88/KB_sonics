@@ -25,6 +25,7 @@ class Member(Base):
     position2: Mapped[str | None] = mapped_column(String(1))         # 부 포지션 (선택)
     height_cm: Mapped[int | None] = mapped_column(Integer)
     weight_kg: Mapped[int | None] = mapped_column(Integer)           # 선택, 본인·운영진만 열람
+    back_number: Mapped[str | None] = mapped_column(String(2))       # 백넘버 "0"~"99", "00" (중복 허용, 없으면 화면에 '-')
     initial_grade: Mapped[float | None] = mapped_column(Float)
     mu: Mapped[float] = mapped_column(Float, default=25.0)
     sigma: Mapped[float] = mapped_column(Float, default=25 / 3)

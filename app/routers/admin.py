@@ -366,14 +366,14 @@ def member_new(name: str = Form(...), position: str = Form(""), position2: str =
 
 @router.post("/members/{mid:int}")
 def member_edit(mid: int, name: str = Form(...), position: str = Form(""), position2: str = Form(""),
-                height: str = Form(""), weight: str = Form(""), is_active: str = Form(""),
-                db: Session = Depends(get_db), admin=Depends(admin_page)):
+                height: str = Form(""), weight: str = Form(""), back_number: str = Form(""),
+                is_active: str = Form(""), db: Session = Depends(get_db), admin=Depends(admin_page)):
     m = _member(db, mid)
     try:
         h = ops.parse_height(height)
         ops.update_member(db, admin, m, name=name, position=position, height=h,
                           is_active=bool(is_active), position2=position2 or None,
-                          weight=ops.parse_weight(weight))
+                          weight=ops.parse_weight(weight), back_number=ops.parse_back_number(back_number))
         if h is None and m.height_cm is not None:
             m.height_cm = None
             db.commit()
