@@ -27,6 +27,18 @@
   const ARC = { cx: 80, cy: 46, rx: 68, ry: 112 };
   const SPOT_DEG = [170, 135, 90, 45, 10];          // 왼쪽 코너 → 오른쪽 코너
   const ZONE_C = [0.58, 0.65, 0.72, 0.65, 0.58];    // 지점별 '딱 맞는 힘' (탑이 가장 멀다)
+
+  // ---------------------------------------------------------------- 난이도 (2026-10 상향: 평균 22.5점 → 약 10점 목표)
+  const DIFF = {
+    zone: 0.07,        // 성공 구간 폭 (예전 0.16)
+    swish: 0.012,      // 스위시 반폭 (예전 0.03)
+    rim: 0.04,         // 성공 구간 밖 '림 맞음' 폭 (예전 0.07)
+    rollIn: 0.15,      // 림 맞고 들어갈 확률 (예전 0.25)
+    fire: 1.25,        // ON FIRE 때 성공 구간 배율 (예전 1.5)
+    period: 0.8,       // 게이지 왕복 주기(초), 지점마다 -periodStep (예전 1.05)
+    periodStep: 0.06,
+    shift: 0.10,       // 슛마다 성공 구간 위치가 ±shift/2 만큼 바뀐다 (예전 고정)
+  };
   const spotXY = deg => {
     const t = deg * Math.PI / 180;
     return { x: ARC.cx + (ARC.rx + 6) * Math.cos(t), y: ARC.cy + (ARC.ry + 6) * Math.sin(t) };
@@ -110,10 +122,16 @@
     shots: new Array(RACKS * BALLS).fill('pending'),
     spot: 0, ballInSpot: 0, walking: null, holding: false, holdT: 0, lastRelease: -1e9, armsUp: 0,
     streak: 0, fire: false, fireFlash: 0, balls: [], floats: [], parts: [], net: 0, timeUp: false, endT: 0,
-    runId: null, ending: false,
+    runId: null, ending: false, target: ZONE_C[0],
   };
-  const zoneW = () => 0.16 * (S.fire ? 1.5 : 1);
-  const period = () => 1.05 - 0.06 * S.spot;       // 뒤로 갈수록 게이지가 조금 빨라진다
+  const zoneW = () => DIFF.zone * (S.fire ? DIFF.fire : 1);
+  const period = () => DIFF.period - DIFF.periodStep * S.spot;   // 뒤로 갈수록 게이지가 빨라진다
+  // 이번 공의 성공 구간 중심 (공마다 새로 뽑고 게이지에 보여준다)
+  const zoneC = () => S.target;
+  function newTarget() {
+    const c = ZONE_C[S.spot] + (Math.random() - 0.5) * DIFF.shift;
+    S.target = Math.min(0.9, Math.max(0.3, c));
+  }
   const tri = x => 1 - Math.abs((x % 2) - 1);
   const power = () => tri(S.holdT * 2 / period());
   const remaining = now => Math.max(0, SECONDS - (now - S.t0) / 1000);
@@ -132,11 +150,11 @@
   function release(now) {
     if (!S.holding) return;
     S.holding = false;
-    const p = power(), c = ZONE_C[S.spot], half = zoneW() / 2, d = p - c, ad = Math.abs(d);
+    const p = power(), c = zoneC(), half = zoneW() / 2, d = p - c, ad = Math.abs(d);
     let res;
-    if (ad <= 0.03) res = 'swish';
+    if (ad <= DIFF.swish) res = 'swish';
     else if (ad <= half) res = 'make';
-    else if (ad <= half + 0.07) res = Math.random() < 0.25 ? 'rollin' : 'rimout';
+    else if (ad <= half + DIFF.rim) res = Math.random() < DIFF.rollIn ? 'rollin' : 'rimout';
     else res = d < 0 ? 'short' : 'long';
     const money = S.ballInSpot === BALLS - 1;
     const idx = S.spot * BALLS + S.ballInSpot;
@@ -145,6 +163,7 @@
     else { S.streak = 0; S.fire = false; }
     S.ballInSpot++; S.lastRelease = now; S.armsUp = 0.28;
     spawnBall(res, money, idx, made);
+    if (S.ballInSpot < BALLS) newTarget();
   }
   function spawnBall(res, money, idx, made) {
     const p = playerPos(), h = bodyH();
@@ -194,7 +213,7 @@
       if (S.holding) S.holdT += dt;
       if (S.walking) {
         S.walking.t += dt;
-        if (S.walking.t >= S.walking.dur) { S.spot = S.walking.to; S.walking = null; S.ballInSpot = 0; }
+        if (S.walking.t >= S.walking.dur) { S.spot = S.walking.to; S.walking = null; S.ballInSpot = 0; newTarget(); }
       } else if (S.ballInSpot >= BALLS && S.spot < RACKS - 1 && now - S.lastRelease > 380 && !S.timeUp) {
         S.walking = { from: S.spot, to: S.spot + 1, t: 0, dur: 0.55 };
       }
@@ -332,9 +351,9 @@
     g.globalAlpha = active ? 1 : 0.45;
     px(x - 1, y - 1, w + 2, h + 2, '#0f0b16');
     px(x, y, w, h, '#2b2240');
-    const c = ZONE_C[S.spot], half = zoneW() / 2;
-    px(x + Math.round((c - half) * w), y, Math.round(half * 2 * w), h, S.fire ? C.fire : C.green);
-    px(x + Math.round((c - 0.03) * w), y, Math.max(1, Math.round(0.06 * w)), h, S.fire ? C.gold : '#a7f3d0');
+    const c = zoneC(), half = zoneW() / 2;
+    px(x + Math.round((c - half) * w), y, Math.max(2, Math.round(half * 2 * w)), h, S.fire ? C.fire : C.green);
+    px(x + Math.round((c - DIFF.swish) * w), y, Math.max(1, Math.round(DIFF.swish * 2 * w)), h, S.fire ? C.gold : '#a7f3d0');
     if (S.holding) {
       const ix = x + Math.round(power() * (w - 1));
       px(ix - 1, y - 3, 3, h + 6, C.white); px(ix, y - 4, 1, 1, C.white);
@@ -421,6 +440,7 @@
       spot: 0, ballInSpot: 0, walking: null, holding: false, holdT: 0, lastRelease: -1e9, armsUp: 0,
       streak: 0, fire: false, fireFlash: 0, balls: [], floats: [], parts: [], net: 0, timeUp: false, runId: null, ending: false,
     });
+    newTarget();
   }
 
   let starting = false;

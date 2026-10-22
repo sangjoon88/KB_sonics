@@ -17,7 +17,7 @@ RACKS, BALLS_PER_RACK = 5, 5
 MAX_MADE = RACKS * BALLS_PER_RACK                 # 25개
 MAX_MONEY = RACKS                                 # 랙마다 마지막 공 1개 = 머니볼(2점)
 MAX_SCORE = MAX_MADE + MAX_MONEY                  # 30점
-GAME_SECONDS = 60
+GAME_SECONDS = 45                                 # 2026-10 난이도 상향 (예전 60초)
 MIN_SECONDS = 15                                  # 25개를 아무리 빨리 쏴도 이보다 짧을 수 없음
 MAX_SECONDS = GAME_SECONDS + 120                  # 화면 꺼짐·전송 지연 여유
 DAILY_LIMIT = 60                                  # 하루 최대 판 수 (도배 방지)
