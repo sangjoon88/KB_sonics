@@ -22,6 +22,7 @@ def winrate_min_games(season_games: int) -> int:
 class MemberStats:
     member_id: int
     name: str
+    back_number: str | None = None
     attended: int = 0
     sessions_total: int = 0
     games: int = 0
@@ -44,7 +45,7 @@ class MemberStats:
 
     def as_dict(self) -> dict:
         return {
-            "member_id": self.member_id, "name": self.name, "attended": self.attended,
+            "member_id": self.member_id, "name": self.name, "back_number": self.back_number, "attended": self.attended,
             "sessions_total": self.sessions_total, "attendance_rate": round(self.attendance_rate, 3),
             "games": self.games, "wins": self.wins, "losses": self.losses, "draws": self.draws,
             "win_rate": round(self.win_rate, 3), "best_streak": self.best_streak,
@@ -64,7 +65,7 @@ def _season_sessions(db: Session, season: int) -> list[ClubSession]:
 
 def compute_stats(db: Session, season: int, today: date | None = None) -> dict[int, MemberStats]:
     members = db.scalars(select(Member).where(Member.is_guest.is_(False))).all()
-    stats = {m.id: MemberStats(member_id=m.id, name=m.name) for m in members}
+    stats = {m.id: MemberStats(member_id=m.id, name=m.name, back_number=m.back_number) for m in members}
     sessions = _season_sessions(db, season)
     # 출석 = 그날 결과가 입력된 게임을 1게임 이상 실제로 뛴 경우 (투표·출석 체크만으로는 세지 않음)
     # 출석률 분모 = 결과가 입력된 게임이 있는 모임 수
