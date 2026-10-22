@@ -38,6 +38,9 @@
       --on-gold: #1b1027;
     }
     body { -webkit-tap-highlight-color: transparent; background-color: var(--bg); }
+    /* iOS 사파리: 날짜·시간 칸이 고유 최소 폭 때문에 옆 칸과 겹치지 않게 */
+    input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; min-height: 2.6rem; }
+    input[type="date"]::-webkit-date-and-time-value, input[type="time"]::-webkit-date-and-time-value { text-align: left; }
     .htmx-request.htmx-indicator, .htmx-request .htmx-indicator { opacity: 1 }
     .htmx-indicator { opacity: 0; transition: opacity .2s }
     .site-header { background: var(--lakers-purple); border-bottom: 3px solid var(--lakers-gold); }

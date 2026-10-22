@@ -17,7 +17,7 @@
   {% for r in rows %}
     <tr class="border-t border-stone-100 {{ 'bg-orange-50' if me and r.member_id == me.id }}">
       <td class="py-2 text-center text-stone-400">{{ loop.index }}</td>
-      <td class="font-medium whitespace-nowrap">{{ bn(r, "mr-1") }}{{ r.name }}</td>
+      <td class="font-medium whitespace-nowrap"><span class="inline-flex items-center gap-1.5">{{ bn(r) }}<span>{{ r.name }}</span></span></td>
       <td class="text-center {{ 'font-bold' if sort == 'attendance' }}">{{ r.attended }}<span class="ml-1 text-[10px] font-normal text-stone-400">{{ (r.attendance_rate*100)|round|int }}%</span></td>
       <td class="text-center {{ 'font-bold' if sort == 'games' }}">{{ r.games }}</td>
       <td class="text-center {{ 'font-bold' if sort == 'winrate' }}">{% if r.games %}{{ (r.win_rate*100)|round|int }}%{% else %}-{% endif %}</td>

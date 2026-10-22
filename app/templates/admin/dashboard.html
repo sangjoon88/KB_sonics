@@ -10,9 +10,9 @@
   <p class="text-xs text-stone-500">등록하면 바로 참석 투표가 열려요. 투표는 현장 출석 체크를 시작하거나 운영진이 마감하면 닫혀요.</p>
   <form method="post" action="/admin/sessions" class="mt-3 space-y-3">
     <div class="grid grid-cols-2 gap-2">
-      <label class="block"><span class="text-xs text-stone-500">날짜</span>
+      <label class="block min-w-0"><span class="text-xs text-stone-500">날짜</span>
         <input type="date" name="session_date" value="{{ next_date.isoformat() }}" required class="w-full border border-stone-300 rounded-lg px-2 py-2"></label>
-      <label class="block"><span class="text-xs text-stone-500">시작 시간</span>
+      <label class="block min-w-0"><span class="text-xs text-stone-500">시작 시간</span>
         <input type="time" name="start_time" value="{{ default_time }}" required class="w-full border border-stone-300 rounded-lg px-2 py-2"></label>
     </div>
     <label class="block"><span class="text-xs text-stone-500">장소</span>

@@ -133,7 +133,7 @@
         <div class="text-xs text-stone-500 mb-1">{{ title }}</div>
         <ol class="space-y-1">
           {% for r in rows %}
-          <li class="flex justify-between {{ 'font-bold text-orange-700' if r.member_id == me.id }}"><span class="whitespace-nowrap">{{ ['🥇','🥈','🥉'][loop.index0] }} {{ bn(r, 'mr-0.5') }}{{ r.name }}</span><span>{{ (r.attended ~ '회') if fmt == 'att' else (r.best_streak ~ '연승') }}</span></li>
+          <li class="flex justify-between {{ 'font-bold text-orange-700' if r.member_id == me.id }}"><span class="inline-flex items-center gap-1 whitespace-nowrap">{{ ['🥇','🥈','🥉'][loop.index0] }}{{ bn(r) }}<span>{{ r.name }}</span></span><span>{{ (r.attended ~ '회') if fmt == 'att' else (r.best_streak ~ '연승') }}</span></li>
           {% else %}
           <li class="text-stone-400 text-xs">첫 경기가 끝나면 순위가 나와요</li>
           {% endfor %}
