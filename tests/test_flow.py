@@ -707,3 +707,30 @@ def test_guest_height_visible_to_everyone(client, db):
         assert "193cm" in page and "키 ?" in page, url       # 운영진: 게스트 키 보임 (미입력은 '키 ?')
     _login_as(client, db, host)
     assert "193cm" in client.get(f"/s/{s.id}/live").text      # 일반 멤버에게도 보임
+
+
+def test_preview_matches_actual_lineup_when_everyone_shows_up(client, db):
+    """투표한 사람이 그대로 출석하면 실제 게임 1 팀 = 예상 팀 (A/B 라벨까지)."""
+    import datetime as _dt
+    import random as _r
+    admin = _login_admin(client, db)
+    rnd = _r.Random(11)
+    ms = [Member(name=f"동일{i}", position="GFC"[i % 3], height_cm=rnd.randint(168, 194)) for i in range(11)]
+    db.add_all(ms)
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: float(1 + i % 5) for i, m in enumerate([admin, *ms])})
+    s = ops.create_session(db, admin, _dt.date(2099, 8, 2))
+    voters = [admin, *ms[:10]]
+    for i, m in enumerate(voters):
+        ops.vote(db, s, m, "early" if i == 3 else "yes", "09:30" if i == 3 else None)
+    ops.add_guest(db, s, ms[0], "같은손님", grade=4, height=186, position="C")
+    db.expire_all()
+    pv = ops.preview_teams(db, s)
+    expect = ({m.id for m in pv["a"]}, {m.id for m in pv["b"]})
+    # 투표한 사람 전원(게스트 포함) 그대로 출석 → 팀 짜기
+    for a in s.attendances:
+        if a.vote in ("yes", "early"):
+            ops.set_checkin(db, admin, s, a.member_id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    actual = ({r.member_id for r in g1.roster if r.side == "A"}, {r.member_id for r in g1.roster if r.side == "B"})
+    assert actual == expect
