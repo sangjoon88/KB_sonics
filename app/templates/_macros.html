@@ -19,7 +19,7 @@
 {%- endmacro %}
 
 {% macro guest_tag(m) -%}
-{% if m.is_guest %}<span class="text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
+{% if m.is_guest %}<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
 {%- endmacro %}
 
 {# 게스트 키: 운영진 화면에서만 (일반 멤버에게는 아무것도 출력하지 않음) #}
