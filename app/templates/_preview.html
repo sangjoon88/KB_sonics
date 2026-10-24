@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, guest_height, bn, leave %}
+{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, bn, leave %}
 {% call card() %}
   {% if g1 %}
     <div class="flex items-center justify-between">
@@ -17,7 +17,7 @@
         <ul class="space-y-1">
           {% for m in members %}
           <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1 {{ 'ring-2 ring-orange-400' if me and m.id == me.id }}">
-            {{ bn(m) }}<span class="shrink-0">{{ pos_badge(m.position) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}{{ guest_height(m, admin) }}
+            {{ bn(m) }}<span class="shrink-0">{{ pos_badge(m.position) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}
             {{ leave(pv.early.get(m.id)) }}
           </li>
           {% endfor %}
