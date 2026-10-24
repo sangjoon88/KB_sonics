@@ -691,7 +691,7 @@ def test_back_number(client, db):
     assert "opacity-50" not in pv
 
 
-def test_guest_height_visible_to_admin_only(client, db):
+def test_guest_height_visible_to_everyone(client, db):
     import datetime as _dt
     admin = _login_admin(client, db)
     host = Member(name="초대한사람", position="G", height_cm=175)
@@ -706,4 +706,4 @@ def test_guest_height_visible_to_admin_only(client, db):
         page = client.get(url).text
         assert "193cm" in page and "키 ?" in page, url       # 운영진: 게스트 키 보임 (미입력은 '키 ?')
     _login_as(client, db, host)
-    assert "193cm" not in client.get(f"/s/{s.id}/live").text  # 일반 멤버: 안 보임
+    assert "193cm" in client.get(f"/s/{s.id}/live").text      # 일반 멤버에게도 보임

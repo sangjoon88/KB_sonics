@@ -22,9 +22,9 @@
 {% if m.is_guest %}<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
 {%- endmacro %}
 
-{# 게스트 키: 운영진 화면에서만 (일반 멤버에게는 아무것도 출력하지 않음) #}
-{% macro guest_height(m, admin) -%}
-{% if admin and m.is_guest %}<span class="shrink-0 text-[10px] text-stone-500 whitespace-nowrap">{{ (m.height_cm ~ 'cm') if m.height_cm else '키 ?' }}</span>{% endif %}
+{# 게스트 키 (모든 이용자에게 표시) #}
+{% macro guest_height(m) -%}
+{% if m.is_guest %}<span class="shrink-0 text-[10px] text-stone-500 whitespace-nowrap">{{ (m.height_cm ~ 'cm') if m.height_cm else '키 ?' }}</span>{% endif %}
 {%- endmacro %}
 
 {# 백넘버: 이름 앞에 '#23', 없으면 '-' #}

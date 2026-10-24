@@ -20,7 +20,7 @@
       <div class="mt-1 flex flex-wrap gap-1">
         {% for a in lists[key] %}
           <span class="text-sm {{ 'bg-emerald-50 border border-emerald-200' if a.member.is_guest else 'bg-stone-100' }} rounded px-2 py-0.5">{{ bn(a.member, 'mr-0.5') }}{{ a.member.name }}
-            {%- if a.member.is_guest %} {{ guest_tag(a.member) }} {{ guest_height(a.member, admin) }}{% if a.inviter %}<span class="text-[10px] text-stone-500"> · {{ a.inviter.name }}</span>{% endif %}{% endif %}
+            {%- if a.member.is_guest %} {{ guest_tag(a.member) }} {{ guest_height(a.member) }}{% if a.inviter %}<span class="text-[10px] text-stone-500"> · {{ a.inviter.name }}</span>{% endif %}{% endif %}
             {%- if a.proxy_by %} <span class="text-[10px] text-stone-500" title="{{ a.proxy.name }} 운영진이 대신 입력">· 대리</span>{% endif %}
           </span>
         {% else %}<span class="text-xs text-stone-400">-</span>{% endfor %}

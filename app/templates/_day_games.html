@@ -22,7 +22,7 @@
           {% if g.winner == side %}<span class="text-xs">🏆</span>{% endif %}</div>
         <ul class="space-y-1">
           {% for m in members %}
-          <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ bn(m) }}<span class="shrink-0">{{ pos_badge(m.position) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}{{ guest_height(m, admin) }}{{ leave(early.get(m.id) if early) }}</li>
+          <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ bn(m) }}<span class="shrink-0">{{ pos_badge(m.position) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}{{ guest_height(m) }}{{ leave(early.get(m.id) if early) }}</li>
           {% endfor %}
         </ul>
       </div>

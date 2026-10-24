@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, balance_badge, bn, leave %}
+{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, bn, leave %}
 {% call card() %}
   {% if g1 %}
     <div class="flex items-center justify-between">
@@ -17,10 +17,15 @@
         <ul class="space-y-1">
           {% for m in members %}
           <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1 {{ 'ring-2 ring-orange-400' if me and m.id == me.id }}">
-            {# 게스트는 등번호가 없으니 운영진에게는 그 자리에 키를 보여준다 (# 없이 초록색 = 키) #}
-            {% if m.is_guest and admin %}<span class="shrink-0 tabular-nums text-[11px] font-bold text-emerald-500 inline-block min-w-[1.75rem] text-right" title="키(cm)">{{ m.height_cm or '?' }}</span>{% else %}{{ bn(m) }}{% endif %}
-            {# 좁은 칸이라 '게스트' 태그 대신 초록 이름으로 표시 (이름이 칸을 다 쓰도록) #}
-            <span class="shrink-0">{{ pos_badge(m.position) }}</span><span class="truncate flex-1 {{ 'text-emerald-700 font-semibold' if m.is_guest }}">{{ m.name }}</span>
+            {# 게스트는 등번호가 없으니 그 자리에 키를 보여준다 (# 없이 초록색 숫자) #}
+            {% if m.is_guest %}<span class="shrink-0 tabular-nums text-[11px] font-bold text-emerald-500 inline-block min-w-[1.75rem] text-right" title="키(cm)">{{ m.height_cm or '?' }}</span>{% else %}{{ bn(m) }}{% endif %}
+            <span class="shrink-0">{{ pos_badge(m.position) }}</span>
+            {% if m.is_guest %}
+            {# 좁은 칸: 게스트는 이름이 한 줄을 다 쓰고 '게스트' 태그는 아래 줄 #}
+            <span class="min-w-0 flex-1 leading-tight"><span class="block break-all line-clamp-2">{{ m.name }}</span>{{ guest_tag(m) }}</span>
+            {% else %}
+            <span class="truncate flex-1">{{ m.name }}</span>
+            {% endif %}
             {{ leave(pv.early.get(m.id)) }}
           </li>
           {% endfor %}
@@ -28,10 +33,7 @@
       </div>
       {% endfor %}
     </div>
-    {% if (pv.a + pv.b)|selectattr('is_guest')|list %}
-    <p class="mt-2 text-[11px] text-stone-500"><span class="text-emerald-700 font-semibold">초록 이름</span> = 게스트{{ ' · 초록 숫자 = 게스트 키(cm)' if admin }}</p>
-    {% endif %}
-    <p class="mt-1 text-xs text-stone-500">투표가 바뀌면 자동으로 다시 계산돼요. 실제 팀은 당일 현장 출석 기준으로 확정됩니다.</p>
+    <p class="mt-2 text-xs text-stone-500">투표가 바뀌면 자동으로 다시 계산돼요. 실제 팀은 당일 현장 출석 기준으로 확정됩니다.</p>
   {% elif pv.status == 'many' %}
     <div class="font-bold">예상 팀</div>
     <p class="text-sm text-stone-500 mt-1">{{ pv.n }}명 — 인원이 많아 예상 팀은 당일 운영진이 짭니다.</p>
