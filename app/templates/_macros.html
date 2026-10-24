@@ -2,8 +2,9 @@
 <section class="bg-white rounded-xl shadow-sm border border-stone-200 p-4 {{ kwargs.get('cls', '') }}">{{ caller() }}</section>
 {%- endmacro %}
 
-{% macro pos_badge(p) -%}
-{% if p %}<span class="inline-block text-[10px] font-bold px-1.5 rounded {{ {'G':'bg-sky-100 text-sky-700','F':'bg-violet-100 text-violet-700','C':'bg-amber-100 text-amber-800'}[p] }}">{{ p }}</span>{% endif %}
+{# slot=True: 포지션이 없어도 같은 폭의 빈자리를 남겨 목록에서 이름 줄을 맞춘다 #}
+{% macro pos_badge(p, slot=False) -%}
+{% if p %}<span class="inline-block w-[18px] text-center text-[10px] font-bold rounded {{ {'G':'bg-sky-100 text-sky-700','F':'bg-violet-100 text-violet-700','C':'bg-amber-100 text-amber-800'}[p] }}">{{ p }}</span>{% elif slot %}<span class="invisible inline-block w-[18px] text-[10px]" aria-hidden="true">G</span>{% endif %}
 {%- endmacro %}
 
 {% macro balance_badge(label) -%}
@@ -42,8 +43,8 @@
 {% if t %}<span class="shrink-0 whitespace-nowrap text-[9px] leading-none text-amber-700">⏰{{ t }}</span>{% endif %}
 {%- endmacro %}
 
-{% macro pos_badges(m) -%}
-{{ pos_badge(m.position) }}{% if m.position2 %}<span class="opacity-50 ml-0.5">{{ pos_badge(m.position2) }}</span>{% endif %}
+{% macro pos_badges(m, slot=False) -%}
+{{ pos_badge(m.position, slot) }}{% if m.position2 %}<span class="opacity-50 ml-0.5">{{ pos_badge(m.position2) }}</span>{% endif %}
 {%- endmacro %}
 
 {% macro place(s, cls='text-stone-600') -%}
