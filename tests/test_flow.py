@@ -689,3 +689,21 @@ def test_back_number(client, db):
     assert ">#23</span>" in pv
     # 예상 팀은 주 포지션만 (부 포지션 뱃지는 opacity-50 으로 붙는다)
     assert "opacity-50" not in pv
+
+
+def test_guest_height_visible_to_admin_only(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    host = Member(name="초대한사람", position="G", height_cm=175)
+    db.add(host)
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in (admin, host)})
+    s = ops.create_session(db, admin, _dt.date(2099, 7, 5))
+    ops.vote(db, s, host, "yes")
+    ops.add_guest(db, s, host, "키큰손님", grade=3, height=193, position="C")
+    ops.add_guest(db, s, host, "키모름", grade=3)
+    for url in (f"/s/{s.id}/live", f"/admin/s/{s.id}/checkin"):
+        page = client.get(url).text
+        assert "193cm" in page and "키 ?" in page, url       # 운영진: 게스트 키 보임 (미입력은 '키 ?')
+    _login_as(client, db, host)
+    assert "193cm" not in client.get(f"/s/{s.id}/live").text  # 일반 멤버: 안 보임

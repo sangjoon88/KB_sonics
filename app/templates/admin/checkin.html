@@ -35,7 +35,7 @@
   <ul class="mt-3 space-y-1 text-sm">
     {% for a in guests %}
     <li class="flex items-center justify-between bg-emerald-50 rounded-lg px-3 py-2">
-      <span>{{ a.member.name }} <span class="text-xs text-stone-500">{{ ('· ' ~ a.inviter.name ~ ' 초대') if a.inviter else '· 현장 추가' }}</span></span>
+      <span>{{ a.member.name }} <span class="text-xs text-stone-500">· {{ (a.member.height_cm ~ 'cm') if a.member.height_cm else '키 ?' }} {{ ('· ' ~ a.inviter.name ~ ' 초대') if a.inviter else '· 현장 추가' }}</span></span>
       <form method="post" action="/admin/s/{{ s.id }}/guests/{{ a.member_id }}/remove" onsubmit="return confirm('{{ a.member.name }} 게스트를 뺄까요?')">
         <button class="text-xs text-red-600 underline">빼기</button></form>
     </li>

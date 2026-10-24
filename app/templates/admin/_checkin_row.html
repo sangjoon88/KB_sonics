@@ -3,7 +3,7 @@
         class="rounded-lg border px-3 py-3 text-left {{ 'bg-orange-600 border-orange-600 text-white' if a and a.checked_in else 'bg-white border-stone-200' }}">
   <div class="font-semibold">{{ '✅ ' if a and a.checked_in }}{{ m.name }}{% if m.is_guest %} <span class="text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}</div>
   <div class="text-xs {{ 'text-orange-100' if a and a.checked_in else 'text-stone-500' }}">
-    {% if a and a.member.is_guest %}{{ (a.inviter.name ~ ' 초대') if a.inviter else '현장 추가' }}{% elif a and a.vote %}투표: {{ VOTE_LABEL.get(a.vote, a.vote) }}{% if a.vote == 'early' and a.leave_time %} ⏰{{ a.leave_time }}{% endif %}{% else %}투표 안 함{% endif %}{% if not m.height_cm %} · 키 미입력{% endif %}{% if m.initial_grade is none %} · 등급 미확정{% endif %}
+    {% if a and a.member.is_guest %}{{ (a.inviter.name ~ ' 초대') if a.inviter else '현장 추가' }} · {{ (m.height_cm ~ 'cm') if m.height_cm else '키 ?' }}{% elif a and a.vote %}투표: {{ VOTE_LABEL.get(a.vote, a.vote) }}{% if a.vote == 'early' and a.leave_time %} ⏰{{ a.leave_time }}{% endif %}{% else %}투표 안 함{% endif %}{% if not m.height_cm %} · 키 미입력{% endif %}{% if m.initial_grade is none %} · 등급 미확정{% endif %}
   </div>
 </button>
 {% if oob %}<b id="checked-count" hx-swap-oob="true" class="text-orange-600">{{ checked }}</b>{% endif %}
