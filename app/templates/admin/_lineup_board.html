@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag, bn, leave %}
+{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag, bn, leave, team_name %}
 {% set editable = game.status != 'finished' %}
 {% set can_remove = editable and no == 2 %}
 <div class="space-y-3">
@@ -12,7 +12,7 @@
   <div class="grid grid-cols-2 gap-3">
     {% for side, members, color in [('A', team_a, 'orange'), ('B', team_b, 'sky')] %}
     <div class="bg-white rounded-xl border border-stone-200 p-2">
-      <div class="text-sm font-bold text-{{ color }}-700 px-1 mb-1">{{ '🟪 A팀' if side == 'A' else '🟦 B팀' }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
+      <div class="text-sm font-bold px-1 mb-1">{{ team_name(side) }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
       <div class="space-y-1">
       {% for m in members %}
         <div class="flex items-stretch gap-1">

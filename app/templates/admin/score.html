@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls %}
+{% from "_macros.html" import card, btn_cls, team_name %}
 {% block title %}게임 {{ game.game_no }} 점수{% endblock %}
 {% block content %}
 <a href="/admin/s/{{ s.id }}" class="text-sm text-stone-500">‹ {{ fmt_date(s.date) }} 운영</a>
@@ -9,7 +9,7 @@
   <div class="grid grid-cols-2 gap-3">
     {% for side, names, color, val in [('a', team_a, 'orange', game.score_a), ('b', team_b, 'sky', game.score_b)] %}
     <label class="block bg-white rounded-xl border-2 border-{{ color }}-300 p-3">
-      <div class="font-bold text-{{ color }}-700">{{ '🟪 A팀' if side == 'a' else '🟦 B팀' }}</div>
+      <div class="font-bold">{{ team_name(side) }}</div>
       <input name="score_{{ side }}" type="number" inputmode="numeric" min="0" max="300" required
              value="{{ val if val is not none else '' }}" {{ 'autofocus' if side == 'a' }}
              class="mt-2 w-full text-center text-5xl font-black border-0 bg-{{ color }}-50 rounded-lg py-4 focus:ring-2 focus:ring-{{ color }}-400">

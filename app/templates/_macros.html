@@ -18,8 +18,13 @@
 {% if m.is_owner %}<span title="관리자">👑</span>{% elif m.is_admin %}<span title="운영진">🛡️</span>{% endif %}
 {%- endmacro %}
 
-{% macro guest_tag(m) -%}
-{% if m.is_guest %}<span class="shrink-0 whitespace-nowrap text-[10px] font-bold px-1 rounded bg-emerald-100 text-emerald-700">게스트</span>{% endif %}
+{% macro guest_tag(m, small=False) -%}
+{% if m.is_guest %}<span class="shrink-0 whitespace-nowrap font-bold rounded bg-emerald-100 text-emerald-700 {{ 'text-[8px] leading-[12px] px-[3px]' if small else 'text-[10px] px-1' }}">게스트</span>{% endif %}
+{%- endmacro %}
+
+{# 팀 이름: A팀 = 버건디 네모, B팀 = 흰 네모 (글씨는 다크 흰색 / 라이트 검정 — .team-label) #}
+{% macro team_name(side) -%}
+<span class="team-label inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm {{ 'bg-[#800020]' if side|upper == 'A' else 'bg-white ring-1 ring-stone-300' }}"></span>{{ side|upper }}팀</span>
 {%- endmacro %}
 
 {# 게스트 키 (모든 이용자에게 표시) #}
