@@ -193,6 +193,21 @@
     {% block content %}{% endblock %}
   </main>
 
+  {# 공용 팝업 (게스트 정보 수정 등) — hx-target="#kb-dialog-body" 로 내용을 넣으면 열린다 #}
+  <dialog id="kb-dialog" class="rounded-xl p-0 w-[min(92vw,420px)] bg-white text-stone-900 backdrop:bg-black/60">
+    <div id="kb-dialog-body"></div>
+  </dialog>
+  <script>
+    (function () {
+      var dlg = document.getElementById('kb-dialog');
+      document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (e.detail.target && e.detail.target.id === 'kb-dialog-body' && e.detail.target.innerHTML.trim() && !dlg.open) dlg.showModal();
+      });
+      document.body.addEventListener('kbCloseDialog', function () { if (dlg.open) dlg.close(); });
+      dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });   // 바깥 누르면 닫기
+    })();
+  </script>
+
   <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
     <div class="max-w-xl mx-auto grid {{ 'grid-cols-5' if admin else 'grid-cols-4' }} text-center text-xs">
       <a href="/" class="py-3">🏠<div>홈</div></a>

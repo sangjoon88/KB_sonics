@@ -432,8 +432,9 @@ def preview_teams(db: Session, s: ClubSession) -> dict:
     except balancer.BalanceError:
         return {"status": "few", "n": n}
     by_id = {m.id: m for m in members}
+    inviters = {a.member_id: a.guest_of for a in atts if a.member.is_guest}   # 게스트 정보 수정 권한 표시용
     return {"status": "ok", "n": n, "a": [by_id[i] for i in c.team_a], "b": [by_id[i] for i in c.team_b],
-            "label": balancer.balance_label(c.breakdown), "early": early}
+            "label": balancer.balance_label(c.breakdown), "early": early, "inviters": inviters}
 
 
 GUEST_DEFAULT_GRADE = 3
@@ -486,6 +487,56 @@ def add_guest(db: Session, s: ClubSession, inviter: Member | None, name: str, *,
     db.commit()
     db.expire(s, ["attendances"])
     return a
+
+
+def guest_attendance_for_edit(db: Session, s: ClubSession, guest_id: int, *, actor: Member | None,
+                              admin: Member | None) -> Attendance:
+    """게스트 정보 수정 권한 확인: 데려온 사람 또는 운영진."""
+    a = get_attendance(db, s, guest_id)
+    if a is None or not a.member.is_guest:
+        raise OpError("게스트 참석 기록이 없습니다.")
+    if admin is None and (actor is None or a.guest_of != actor.id):
+        raise OpError("게스트를 데려온 사람이나 운영진만 수정할 수 있어요.")
+    return a
+
+
+def guest_has_history(db: Session, guest: Member) -> bool:
+    return db.scalar(select(func.count()).select_from(RatingHistory)
+                     .where(RatingHistory.member_id == guest.id)) > 0
+
+
+def update_guest(db: Session, s: ClubSession, guest_id: int, *, actor: Member | None, admin: Member | None,
+                 name: str, grade: float, height: int | None, position: str | None,
+                 position2: str | None) -> Member:
+    """게스트 정보 수정. 실력(등급)은 경기 기록이 없는 게스트만 레이팅에 반영한다."""
+    a = guest_attendance_for_edit(db, s, guest_id, actor=actor, admin=admin)
+    g = a.member
+    name = (name or "").strip()
+    if not name:
+        raise OpError("게스트 이름을 입력하세요.")
+    if len(name) > 50:
+        raise OpError("이름이 너무 깁니다.")
+    if name != g.name and db.scalar(select(Member).where(Member.name == name, Member.id != g.id)):
+        raise OpError(f"'{name}'은(는) 이미 있는 이름이에요. 다르게 구분해 주세요. (예: {name}(게스트))")
+    if not (1 <= grade <= 5):
+        raise OpError("실력은 1~5")
+    before = {"name": g.name, "grade": g.initial_grade, "height": g.height_cm,
+              "position": g.position, "position2": g.position2}
+    g.name = name
+    if not guest_has_history(db, g):
+        g.initial_grade = float(grade)
+        g.mu, g.sigma = rating.grade_to_rating(g.initial_grade)
+    g.height_cm = height
+    g.position = normalize_position(position) if position else None
+    p2 = normalize_position(position2) if position2 else None
+    g.position2 = p2 if p2 != g.position else None
+    if admin is not None and (actor is None or a.guest_of != actor.id):
+        log(db, admin, "guest.update", f"session:{s.id}", {"before": before, "after": {
+            "name": g.name, "grade": g.initial_grade, "height": g.height_cm,
+            "position": g.position, "position2": g.position2}})
+    db.commit()
+    db.expire(s, ["attendances"])
+    return g
 
 
 def remove_guest(db: Session, s: ClubSession, guest_id: int, *, actor: Member | None,

@@ -14,7 +14,7 @@
     {% if admin %}<a href="/admin/s/{{ s.id }}" class="shrink-0 rounded-lg bg-stone-800 text-white text-sm font-semibold px-3 py-2">🛠️ 운영</a>{% endif %}
   </div>
 {% endcall %}
-<div id="vote-box" class="space-y-4">{% include "_vote_box.html" %}</div>
+<div id="vote-box" class="space-y-4" hx-get="/s/{{ s.id }}/votebox" hx-trigger="guestChanged from:body" hx-swap="innerHTML">{% include "_vote_box.html" %}</div>
 {% if admin %}<div id="proxy-box">{% include "_proxy_box.html" %}</div>{% endif %}
 <div id="live" hx-get="/s/{{ s.id }}/live" hx-trigger="every 20s, voteChanged from:body" hx-swap="innerHTML">
   {% include "_live.html" %}

@@ -31,8 +31,12 @@
       {% for a in my_guests %}
       <li class="flex items-center justify-between text-sm bg-emerald-50 rounded-lg px-3 py-2">
         <span>{{ a.member.name }} {{ guest_tag(a.member) }}</span>
+        <span class="flex items-center gap-3">
+        <button type="button" hx-get="/s/{{ s.id }}/guests/{{ a.member_id }}/edit" hx-target="#kb-dialog-body"
+                class="text-xs text-stone-600 underline">수정</button>
         <button hx-post="/s/{{ s.id }}/guests/{{ a.member_id }}/remove" hx-target="#vote-box"
                 hx-confirm="{{ a.member.name }} 게스트를 취소할까요?" class="text-xs text-red-600 underline">취소</button>
+        </span>
       </li>
       {% endfor %}
     </ul>

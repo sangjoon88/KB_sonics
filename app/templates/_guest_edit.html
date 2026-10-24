@@ -1,0 +1,30 @@
+{% from "_macros.html" import position_selects %}
+{% set f = form or {} %}
+{% set cur_grade = (f.grade|int) if f.grade else ((g.initial_grade|round|int) if g.initial_grade else 3) %}
+<form hx-post="/s/{{ s.id }}/guests/{{ g.id }}/edit" hx-target="#kb-dialog-body" class="p-4 space-y-3">
+  <div class="flex items-center justify-between">
+    <div class="font-bold">게스트 정보 수정</div>
+    <button type="button" onclick="document.getElementById('kb-dialog').close()" aria-label="닫기" class="text-stone-400 px-1">✕</button>
+  </div>
+  {% if inviter %}<p class="text-xs text-stone-500 -mt-2">{{ inviter.name }}님이 데려온 게스트</p>{% endif %}
+  {% if edit_err %}<div class="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2 text-sm">{{ edit_err }}</div>{% endif %}
+  <label class="block"><span class="text-xs text-stone-500">이름</span>
+    <input name="name" required maxlength="50" value="{{ f.name if f.name is defined else g.name }}" class="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 bg-white"></label>
+  <div class="grid grid-cols-2 gap-2">
+    <label class="block"><span class="text-xs text-stone-500">실력</span>
+      <select name="grade" class="mt-1 w-full border border-stone-300 rounded-lg px-2 py-2 bg-white" {{ 'disabled' if has_history }}>
+        {% for n, d in [(1,'입문'),(2,'초급'),(3,'중급'),(4,'중상급'),(5,'상급')] %}<option value="{{ n }}" {{ 'selected' if n == cur_grade }}>{{ n }} {{ d }}</option>{% endfor %}
+      </select>
+      {% if has_history %}<input type="hidden" name="grade" value="{{ cur_grade }}">{% endif %}</label>
+    <label class="block"><span class="text-xs text-stone-500">키 (cm)</span>
+      <input name="height" inputmode="numeric" placeholder="모르면 비워두기" value="{{ f.height if f.height is defined else (g.height_cm or '') }}" class="mt-1 w-full min-w-0 border border-stone-300 rounded-lg px-2 py-2 bg-white"></label>
+  </div>
+  <div><span class="text-xs text-stone-500">포지션</span>
+    <div class="mt-1 grid grid-cols-2 gap-2">{{ position_selects(f.position if f.position is defined else g.position, f.position2 if f.position2 is defined else g.position2, cls='w-full border border-stone-300 rounded-lg px-2 py-2 bg-white') }}</div>
+  </div>
+  {% if has_history %}<p class="text-xs text-stone-500">이미 경기를 뛴 게스트라 실력은 경기 결과로 계산돼요.</p>{% endif %}
+  <div class="grid grid-cols-2 gap-2 pt-1">
+    <button type="button" onclick="document.getElementById('kb-dialog').close()" class="rounded-lg border border-stone-300 bg-white py-2 font-semibold">닫기</button>
+    <button class="rounded-lg bg-orange-600 text-white py-2 font-semibold">저장</button>
+  </div>
+</form>

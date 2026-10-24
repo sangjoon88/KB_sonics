@@ -64,7 +64,7 @@
   {% include "_comments.html" %}
 
   {# ---- 예상 팀 / 확정 팀 (실시간) ---- #}
-  <div hx-get="/s/{{ s.id }}/preview" hx-trigger="every 30s" hx-swap="innerHTML">
+  <div hx-get="/s/{{ s.id }}/preview" hx-trigger="every 30s, voteChanged from:body" hx-swap="innerHTML">
     {% include "_preview.html" %}
   </div>
 {% endif %}

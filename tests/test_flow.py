@@ -734,3 +734,52 @@ def test_preview_matches_actual_lineup_when_everyone_shows_up(client, db):
     g1 = ops.generate_game1(db, admin, s)
     actual = ({r.member_id for r in g1.roster if r.side == "A"}, {r.member_id for r in g1.roster if r.side == "B"})
     assert actual == expect
+
+
+def test_guest_edit_permissions_and_update(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    host = Member(name="데려온이", position="G", height_cm=175)
+    other = Member(name="딴사람", position="F", height_cm=180)
+    db.add_all([host, other])
+    db.commit()
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in (admin, host, other)})
+    s = ops.create_session(db, admin, _dt.date(2099, 9, 6))
+    for m in (admin, host, other):
+        ops.vote(db, s, m, "yes")
+    gid = ops.add_guest(db, s, host, "수정손님", grade=2, height=170, position="G").member_id
+    hx = {"HX-Request": "true"}
+
+    # 데려온 사람: 수정 창 열기 + 저장
+    _login_as(client, db, host)
+    r = client.get(f"/s/{s.id}/guests/{gid}/edit")
+    assert r.status_code == 200 and "게스트 정보 수정" in r.text and "수정손님" in r.text
+    r = client.post(f"/s/{s.id}/guests/{gid}/edit", headers=hx,
+                    data={"name": "바뀐손님", "grade": "4", "height": "188", "position": "C", "position2": "F"})
+    assert r.status_code == 200 and "kbCloseDialog" in r.headers["HX-Trigger"] and "voteChanged" in r.headers["HX-Trigger"]
+    g = db.get(Member, gid)
+    db.refresh(g)
+    assert (g.name, g.height_cm, g.position, g.position2, g.initial_grade) == ("바뀐손님", 188, "C", "F", 4.0)
+    assert g.mu == 13 + 4 * 4                                   # 경기 기록이 없으면 실력 반영
+    # 이미 있는 이름으로는 못 바꿈 (창에 오류 표시, 저장 안 됨)
+    r = client.post(f"/s/{s.id}/guests/{gid}/edit", headers=hx, data={"name": "딴사람", "grade": "4"})
+    assert "이미 있는 이름" in r.text
+    db.refresh(g)
+    assert g.name == "바뀐손님"
+    # 내 게스트 목록에 [수정] 버튼, 예상 팀에서 게스트 이름이 수정 링크
+    assert f"/s/{s.id}/guests/{gid}/edit" in client.get(f"/s/{s.id}").text
+
+    # 다른 멤버: 열기·저장 모두 거부, 예상 팀에서도 링크 없음
+    _login_as(client, db, other)
+    assert client.get(f"/s/{s.id}/guests/{gid}/edit").status_code == 403
+    assert client.post(f"/s/{s.id}/guests/{gid}/edit", data={"name": "몰래", "grade": "5"}).status_code == 403
+    assert f"/guests/{gid}/edit" not in client.get(f"/s/{s.id}/live").text
+
+    # 운영진: 수정 가능 (작업 기록에 남음)
+    client.cookies.clear()
+    client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"})
+    assert f"/guests/{gid}/edit" in client.get(f"/s/{s.id}/live").text
+    client.post(f"/s/{s.id}/guests/{gid}/edit", headers=hx, data={"name": "바뀐손님", "grade": "4", "height": "190"})
+    db.refresh(g)
+    assert g.height_cm == 190
+    assert "guest.update" in client.get("/admin/logs").text

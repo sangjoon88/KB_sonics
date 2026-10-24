@@ -1,5 +1,6 @@
 """멤버/공개 HTML 화면."""
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -349,6 +350,62 @@ def guest_remove(request: Request, session_id: int, guest_id: int, db: Session =
     if request.headers.get("HX-Request"):
         return _vote_box(request, db, s, me, err)
     return redirect(f"/s/{s.id}", err=err) if err else redirect(f"/s/{s.id}", msg="게스트를 취소했습니다.")
+
+
+def _guest_edit_form(request: Request, db: Session, s: ClubSession, a, me, admin, err: str | None = None,
+                     form: dict | None = None, status_code: int = 200):
+    return render(request, "_guest_edit.html", {"s": s, "g": a.member, "inviter": a.inviter,
+                                                "has_history": ops.guest_has_history(db, a.member),
+                                                "edit_err": err, "form": form},
+                  member=me, admin=admin, status_code=status_code)
+
+
+@router.get("/s/{session_id}/guests/{guest_id}/edit")
+def guest_edit_form(request: Request, session_id: int, guest_id: int, db: Session = Depends(get_db),
+                    me=Depends(current_member), admin=Depends(current_admin)):
+    s = _session_or_404(db, session_id)
+    try:
+        a = ops.guest_attendance_for_edit(db, s, guest_id, actor=me, admin=admin)
+    except ops.OpError as e:
+        raise HTTPException(403, str(e))
+    return _guest_edit_form(request, db, s, a, me, admin)
+
+
+@router.post("/s/{session_id}/guests/{guest_id}/edit")
+def guest_edit_post(request: Request, session_id: int, guest_id: int, name: str = Form(""),
+                    grade: str = Form("3"), height: str = Form(""), position: str = Form(""),
+                    position2: str = Form(""), db: Session = Depends(get_db),
+                    me=Depends(current_member), admin=Depends(current_admin)):
+    s = _session_or_404(db, session_id)
+    try:
+        a = ops.guest_attendance_for_edit(db, s, guest_id, actor=me, admin=admin)
+    except ops.OpError as e:
+        raise HTTPException(403, str(e))
+    try:
+        ops.update_guest(db, s, guest_id, actor=me, admin=admin, name=name, grade=float(grade or 3),
+                         height=ops.parse_height(height), position=position or None, position2=position2 or None)
+    except (ValueError, ops.OpError) as e:
+        db.rollback()
+        a = ops.get_attendance(db, s, guest_id)
+        form = {"name": name, "grade": grade, "height": height, "position": position, "position2": position2}
+        return _guest_edit_form(request, db, s, a, me, admin, err=str(e), form=form)
+    if request.headers.get("HX-Request"):
+        resp = HTMLResponse("")
+        # 팝업 닫기 + 예상 팀·참석 현황·내 게스트 목록 새로고침
+        resp.headers["HX-Trigger"] = "kbCloseDialog, voteChanged, guestChanged"
+        return resp
+    return redirect(f"/s/{s.id}", msg="게스트 정보를 수정했습니다.")
+
+
+@router.get("/s/{session_id}/votebox")
+def vote_box_partial(request: Request, session_id: int, db: Session = Depends(get_db),
+                     me=Depends(current_member)):
+    s = _session_or_404(db, session_id)
+    if me is None:
+        return HTMLResponse("")
+    return render(request, "_vote_box.html", {"s": s, "my_vote": ops.get_attendance(db, s, me.id),
+                                              "lists": _attendance_lists(s), "voting_open": ops.voting_open(s)},
+                  member=me)
 
 
 # ---------------------------------------------------------------- 한마디 (댓글)
