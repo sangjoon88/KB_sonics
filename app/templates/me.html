@@ -32,4 +32,36 @@
   <span class="text-stone-500">키 {{ me.height_cm or '-' }}cm{% if me.weight_kg %} · {{ me.weight_kg }}kg{% endif %}</span>
   <span class="space-x-3"><a href="/profile?next=/me" class="underline">내 정보 수정</a><a href="/pin?next=/me" class="underline">PIN 변경</a></span>
 </div>
+{% call card() %}
+  <div class="font-bold">🎨 팀 테마 <span class="text-xs font-normal text-stone-500">이 기기에만 저장돼요</span></div>
+  <div id="team-grid" class="mt-3 grid grid-cols-3 gap-2"></div>
+{% endcall %}
+<script>
+  (function () {
+    var grid = document.getElementById('team-grid'), cur = document.documentElement.dataset.team;
+    Object.keys(window.KB_TEAMS).sort(function (a, b) { return a === 'LAL' ? -1 : b === 'LAL' ? 1 : window.KB_TEAMS[a][0].localeCompare(window.KB_TEAMS[b][0], 'ko'); })
+      .forEach(function (code) {
+        var t = window.KB_TEAMS[code], btn = document.createElement('button');
+        btn.type = 'button'; btn.dataset.code = code;
+        btn.className = 'team-pick rounded-lg border border-stone-200 bg-stone-50 px-2 py-2 text-left';
+        btn.innerHTML = '<span class="flex items-center gap-1"><span class="inline-block w-3.5 h-3.5 rounded-full" style="background:' + t[1] + ';box-shadow:0 0 0 1px rgba(127,127,127,.5)"></span>'
+          + '<span class="inline-block w-3.5 h-3.5 rounded-full -ml-1.5" style="background:' + t[2] + ';box-shadow:0 0 0 1px rgba(127,127,127,.5)"></span>'
+          + '<span class="ml-1 text-xs font-bold">' + code + '</span></span><span class="block mt-1 text-[11px] leading-tight text-stone-500">' + t[0] + '</span>';
+        btn.addEventListener('click', function () {
+          cur = window.kbApplyTeam(code);
+          try { localStorage.setItem('team', cur); } catch (e) {}
+          mark();
+        });
+        grid.appendChild(btn);
+      });
+    function mark() {
+      grid.querySelectorAll('.team-pick').forEach(function (b) {
+        var on = b.dataset.code === cur;
+        b.style.outline = on ? '2px solid rgb(var(--bright))' : '';
+        b.style.outlineOffset = on ? '1px' : '';
+      });
+    }
+    mark();
+  })();
+</script>
 {% endblock %}

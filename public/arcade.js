@@ -12,11 +12,17 @@
   cv.width = W; cv.height = H;
   g.imageSmoothingEnabled = false;
 
+  // 팀 테마 색 (base.html 의 kbApplyTeam 이 정한 CSS 변수). 못 읽으면 레이커스 색
+  const cssRGB = (name, fb) => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim().split(/\s+/).map(Number);
+    return v.length === 3 && v.every(n => !isNaN(n)) ? `rgb(${v.join(',')})` : fb;
+  };
   const C = {
-    wall: '#1b1027', band: '#2a1441', gold: '#FDB927', purple: '#552583', purple2: '#46206c', paintLine: '#8f5cc4',
+    wall: cssRGB('--t-bg', '#1b1027'), band: cssRGB('--o900', '#2a1441'), gold: cssRGB('--bright', '#FDB927'),
+    purple: cssRGB('--o600', '#552583'), purple2: cssRGB('--o700', '#46206c'), paintLine: cssRGB('--o400', '#8f5cc4'),
     wood: '#c98a4b', wood2: '#b97b3f', wood3: '#d69a5a', line: '#f4efe6',
     skin: '#d9a273', skin2: '#b98256', hair: '#2a1c14', shoe: '#f4f4f4',
-    ball: '#e2702a', ballDark: '#8f3f12', money: '#FDB927', moneyDark: '#9a6a08',
+    ball: '#e2702a', ballDark: '#8f3f12', money: '#FDB927', moneyDark: '#9a6a08',   // 머니볼은 팀과 상관없이 골드
     rim: '#ff6a1a', rimBack: '#b8460f', board: '#f2f2f2', boardEdge: '#8e98a3', net: '#ffffff',
     green: '#34d399', fire: '#fb923c', dark: '#0f0b16', slot: '#2b2240', slotLine: '#5a4f6d', miss: '#4a3a5e', white: '#ffffff',
   };
