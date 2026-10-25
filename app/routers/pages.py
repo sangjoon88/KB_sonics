@@ -424,14 +424,14 @@ def comments_partial(request: Request, session_id: int, db: Session = Depends(ge
 
 
 @router.post("/s/{session_id}/comments")
-def comment_add(request: Request, session_id: int, body: str = Form(""), db: Session = Depends(get_db),
-                me=Depends(current_member), admin=Depends(current_admin)):
+def comment_add(request: Request, session_id: int, body: str = Form(""), parent_id: str = Form(""),
+                db: Session = Depends(get_db), me=Depends(current_member), admin=Depends(current_admin)):
     s = _session_or_404(db, session_id)
     if me is None:
         return redirect(f"/s/{s.id}")
     err = None
     try:
-        ops.add_comment(db, s, me, body)
+        ops.add_comment(db, s, me, body, int(parent_id) if parent_id.strip().isdigit() else None)
     except ops.OpError as e:
         err = str(e)
     if request.headers.get("HX-Request"):
@@ -470,7 +470,7 @@ def _day_context(db: Session, s: ClubSession, admin) -> dict:
     checked = sum(1 for a in s.attendances if a.checked_in)
     early = {a.member_id: a.leave_time for a in s.attendances if a.vote == "early" and a.leave_time}
     return {"s": s, "games": games, "checked": checked, "admin": admin, "early": early,
-            "show_results": ops.results_public(db)}
+            "show_results": ops.results_public(db), "comments": ops.list_comments(db, s), "today": today_kst()}
 
 
 @router.get("/s/{session_id}/day")
@@ -485,6 +485,24 @@ def day_partial(request: Request, session_id: int, db: Session = Depends(get_db)
                 me=Depends(current_member), admin=Depends(current_admin)):
     s = _session_or_404(db, session_id)
     return render(request, "_day_games.html", _day_context(db, s, admin), member=me, admin=admin)
+
+
+# ---------------------------------------------------------------- 경기 기록 (지난 경기 목록)
+
+@router.get("/games")
+def games_page(request: Request, db: Session = Depends(get_db), me=Depends(current_member),
+               admin=Depends(current_admin)):
+    if me is None:
+        return redirect("/pick?next=/games")
+    sessions = db.scalars(select(ClubSession).order_by(ClubSession.date.desc())).all()
+    rows = []
+    for s in sessions:
+        played = {r.member_id for g in s.games if g.status == "finished" for r in g.roster}
+        rows.append({"s": s, "played": len(played),
+                     "checked": sum(1 for a in s.attendances if a.checked_in),
+                     "games": sum(1 for g in s.games if g.status == "finished"),
+                     "comments": ops.comment_count(db, s)})
+    return render(request, "games.html", {"rows": rows, "today": today_kst()}, member=me, admin=admin)
 
 
 # ---------------------------------------------------------------- 기록

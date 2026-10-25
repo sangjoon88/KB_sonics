@@ -857,20 +857,38 @@ COMMENT_LIST_LIMIT = 100
 
 
 def list_comments(db: Session, s: ClubSession) -> list[SessionComment]:
-    """오래된 것부터 (최근 100개)."""
+    """원댓글(오래된 것부터, 최근 100개) — 각 원댓글의 .replies 에 답글 목록(오래된 것부터)."""
     rows = db.scalars(select(SessionComment).where(SessionComment.session_id == s.id)
-                      .options(selectinload(SessionComment.member))
-                      .order_by(SessionComment.id.desc()).limit(COMMENT_LIST_LIMIT)).all()
-    return list(reversed(rows))
+                      .options(selectinload(SessionComment.member)).order_by(SessionComment.id)).all()
+    tops = [c for c in rows if c.parent_id is None]
+    by_parent: dict[int, list[SessionComment]] = {}
+    for c in rows:
+        if c.parent_id is not None:
+            by_parent.setdefault(c.parent_id, []).append(c)
+    for c in tops:
+        c.replies = by_parent.get(c.id, [])
+    return tops[-COMMENT_LIST_LIMIT:]
 
 
-def add_comment(db: Session, s: ClubSession, member: Member, body: str) -> SessionComment:
+def comment_count(db: Session, s: ClubSession) -> int:
+    return db.scalar(select(func.count()).select_from(SessionComment).where(
+        SessionComment.session_id == s.id, SessionComment.is_deleted.is_(False))) or 0
+
+
+def add_comment(db: Session, s: ClubSession, member: Member, body: str,
+                parent_id: int | None = None) -> SessionComment:
     body = (body or "").strip()
     if not body:
         raise OpError("내용을 입력하세요.")
     if len(body) > COMMENT_MAX_LEN:
         raise OpError(f"{COMMENT_MAX_LEN}자까지 쓸 수 있어요.")
-    c = SessionComment(session_id=s.id, member_id=member.id, body=body)
+    if parent_id is not None:
+        parent = db.get(SessionComment, parent_id)
+        if parent is None or parent.session_id != s.id:
+            raise OpError("답글을 달 댓글이 없어요.")
+        if parent.parent_id is not None:      # 답글의 답글은 같은 원댓글 아래로 (한 단계만)
+            parent_id = parent.parent_id
+    c = SessionComment(session_id=s.id, member_id=member.id, body=body, parent_id=parent_id)
     db.add(c)
     db.commit()
     return c
@@ -879,11 +897,24 @@ def add_comment(db: Session, s: ClubSession, member: Member, body: str) -> Sessi
 def delete_comment(db: Session, s: ClubSession, comment_id: int, *, actor: Member,
                    admin: Member | None = None) -> None:
     c = db.get(SessionComment, comment_id)
-    if c is None or c.session_id != s.id:
+    if c is None or c.session_id != s.id or c.is_deleted:
         raise OpError("댓글이 없습니다.")
     if c.member_id != actor.id and admin is None:
         raise OpError("내가 쓴 글만 지울 수 있어요.")
     if admin is not None and c.member_id != actor.id:
         log(db, admin, "comment.delete", f"session:{s.id}", {"author": c.member.name, "body": c.body[:100]})
-    db.delete(c)
+    replies = db.scalar(select(func.count()).select_from(SessionComment)
+                        .where(SessionComment.parent_id == c.id)) or 0
+    if replies:
+        # 답글이 달린 원댓글: 내용만 지우고 '삭제된 댓글'로 남긴다 (답글은 유지)
+        c.is_deleted = True
+        c.body = ""
+    else:
+        parent = db.get(SessionComment, c.parent_id) if c.parent_id else None
+        db.delete(c)
+        db.flush()
+        # 마지막 답글까지 지워지면 '삭제된 원댓글' 자리도 정리
+        if parent is not None and parent.is_deleted and not db.scalar(
+                select(func.count()).select_from(SessionComment).where(SessionComment.parent_id == parent.id)):
+            db.delete(parent)
     db.commit()

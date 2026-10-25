@@ -157,6 +157,8 @@ class SessionComment(Base):
     member_id: Mapped[int] = mapped_column(ForeignKey("members.id"))
     body: Mapped[str] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_kst)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("session_comments.id"), index=True)  # 답글이면 원댓글
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)   # 답글이 달린 댓글을 지우면 '삭제된 댓글'로 남김
 
     member: Mapped[Member] = relationship()
 

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block title %}경기 기록{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold">경기 기록</h1>
+{% call card(cls='p-0 overflow-hidden') %}
+<ul class="divide-y divide-stone-100">
+  {% for r in rows %}{% set s = r.s %}
+  <li><a href="/s/{{ s.id }}/day" class="flex items-center justify-between px-4 py-3 active:bg-stone-50">
+    <span>
+      <b>{{ fmt_session(s) }}</b>
+      {% if s.date > today %}<span class="ml-1 text-[10px] rounded px-1 bg-orange-100 text-orange-700">예정</span>
+      {% elif s.date == today %}<span class="ml-1 text-[10px] rounded px-1 bg-orange-100 text-orange-700">오늘</span>{% endif %}
+      <span class="block text-xs text-stone-500">
+        {% if r.games %}{{ r.games }}게임 · {{ r.played }}명 참가{% elif r.checked %}출석 {{ r.checked }}명{% else %}경기 전{% endif %}
+      </span>
+    </span>
+    <span class="text-xs text-stone-500 whitespace-nowrap">{% if r.comments %}💬 {{ r.comments }}{% endif %} ›</span>
+  </a></li>
+  {% else %}
+  <li class="px-4 py-6 text-center text-stone-400 text-sm">아직 등록된 경기가 없습니다.</li>
+  {% endfor %}
+</ul>
+{% endcall %}
+{% endblock %}

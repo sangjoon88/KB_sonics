@@ -111,7 +111,7 @@
   {% call card() %}
     <div class="flex items-center justify-between">
       <div class="font-bold">지난 경기 <span class="text-sm font-normal text-stone-500">{{ fmt_date(last.date) }}</span></div>
-      <a href="/s/{{ last.id }}/day" class="text-sm text-stone-500">자세히 ›</a>
+      <span class="text-sm text-stone-500 space-x-2"><a href="/s/{{ last.id }}/day">자세히 ›</a><a href="/games">전체 ›</a></span>
     </div>
     <div class="mt-2 space-y-2">
       {% for g in last.games if g.status == 'finished' %}

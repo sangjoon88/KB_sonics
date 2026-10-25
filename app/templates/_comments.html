@@ -1,15 +1,35 @@
 {% from "_macros.html" import card %}
 {% call card(cls='!py-3') %}
-  {# 목록만 주기적으로 갱신 — 입력 중인 글은 지워지지 않는다 #}
+  {# 목록만 주기적으로 갱신 — 입력 중인 글(답글 포함)은 지워지지 않는다 #}
   <div id="comments" class="scroll-mt-4"></div>
   <div id="comment-list" hx-get="/s/{{ s.id }}/comments" hx-trigger="every 20s" hx-swap="innerHTML">
     {% include "_comment_list.html" %}
   </div>
-  <form hx-post="/s/{{ s.id }}/comments" hx-target="#comment-list" hx-on::after-request="if(event.detail.successful) this.reset()"
+  <div id="reply-chip" class="hidden mb-1 flex items-center gap-2 text-xs text-stone-500">
+    <span>↳ <b class="text-stone-700"></b>님에게 답글</span>
+    <button type="button" onclick="kbReplyCancel()" class="underline">취소</button>
+  </div>
+  <form id="comment-form" hx-post="/s/{{ s.id }}/comments" hx-target="#comment-list"
+        hx-on::after-request="if(event.detail.successful){ this.reset(); kbReplyCancel(); }"
         method="post" action="/s/{{ s.id }}/comments" class="flex gap-2 items-end">
+    <input type="hidden" name="parent_id" value="">
     <textarea name="body" rows="1" maxlength="300" required placeholder="댓글"
               class="flex-1 min-w-0 border border-stone-300 rounded-lg px-3 py-2 text-sm resize-none"
               oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
     <button class="shrink-0 rounded-lg bg-orange-600 text-white font-semibold px-4 py-2 text-sm">등록</button>
   </form>
+  <script>
+    window.kbReply = function (pid, name) {
+      var f = document.getElementById('comment-form'), chip = document.getElementById('reply-chip');
+      f.querySelector('[name=parent_id]').value = pid;
+      chip.querySelector('b').textContent = name; chip.classList.remove('hidden');
+      var ta = f.querySelector('textarea'); ta.placeholder = name + '님에게 답글'; ta.focus();
+    };
+    window.kbReplyCancel = function () {
+      var f = document.getElementById('comment-form'), chip = document.getElementById('reply-chip');
+      if (!f) return;
+      f.querySelector('[name=parent_id]').value = '';
+      chip.classList.add('hidden'); f.querySelector('textarea').placeholder = '댓글';
+    };
+  </script>
 {% endcall %}

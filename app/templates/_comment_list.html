@@ -1,16 +1,31 @@
 {% if comment_err %}<div class="mb-2 rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-1.5 text-sm">{{ comment_err }}</div>{% endif %}
+{% macro comment_row(c, top) -%}
+  {% set mine = me and c.member_id == me.id %}
+  <li class="flex items-start gap-2 text-sm">
+    {% if c.is_deleted %}
+    <p class="min-w-0 flex-1 text-stone-400 text-xs py-0.5">삭제된 댓글이에요</p>
+    {% else %}
+    <p class="min-w-0 flex-1 break-words whitespace-pre-line"><b class="font-semibold {{ 'text-orange-600' if mine else 'text-sky-700' }}">{{ c.member.name }}</b> {{ c.body }} <span class="text-[10px] text-stone-400 whitespace-nowrap">{{ fmt_dt(c.created_at) }}</span></p>
+    <span class="shrink-0 flex items-center gap-1">
+      <button type="button" data-pid="{{ top.id }}" data-name="{{ c.member.name }}" onclick="kbReply(this.dataset.pid, this.dataset.name)"
+              class="text-[11px] text-stone-400 px-1">답글</button>
+      {% if mine or admin %}
+      <button hx-post="/s/{{ s.id }}/comments/{{ c.id }}/delete" hx-target="#comment-list"
+              hx-confirm="이 댓글을 지울까요?" aria-label="삭제" class="text-xs text-stone-400 px-1">✕</button>
+      {% endif %}
+    </span>
+    {% endif %}
+  </li>
+{%- endmacro %}
 {% if comments %}
 <ul class="mb-2 space-y-1">
   {% for c in comments %}
-  {% set mine = me and c.member_id == me.id %}
-  <li class="flex items-start gap-2 text-sm">
-    <p class="min-w-0 flex-1 break-words whitespace-pre-line"><b class="font-semibold {{ 'text-orange-600' if mine else 'text-sky-700' }}">{{ c.member.name }}</b> {{ c.body }} <span class="text-[10px] text-stone-400 whitespace-nowrap">{{ fmt_dt(c.created_at) }}</span></p>
-    {% if mine or admin %}
-    <button hx-post="/s/{{ s.id }}/comments/{{ c.id }}/delete" hx-target="#comment-list"
-            hx-confirm="이 댓글을 지울까요?" aria-label="삭제"
-            class="shrink-0 text-xs text-stone-400 px-1">✕</button>
-    {% endif %}
-  </li>
+  {{ comment_row(c, c) }}
+  {% if c.replies %}
+  <li><ul class="ml-3 pl-2 border-l-2 border-stone-200 space-y-1">
+    {% for r in c.replies %}{{ comment_row(r, c) }}{% endfor %}
+  </ul></li>
+  {% endif %}
   {% endfor %}
 </ul>
 {% endif %}

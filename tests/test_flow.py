@@ -839,3 +839,47 @@ def test_results_hidden_from_member_screens_by_default(client, db):
         assert "57" in client.get(f"/s/{s.id}/day").text and "승률" in client.get("/stats").text
     finally:
         _ops.RESULTS_PUBLIC = False
+
+
+def test_comment_replies_and_past_games(client, db):
+    import datetime as _dt
+    from app.models import SessionComment
+    admin = _login_admin(client, db)
+    a, b = Member(name="원글러", position="G", height_cm=175), Member(name="답글러", position="F", height_cm=180)
+    db.add_all([a, b])
+    db.commit()
+    past = ops.create_session(db, admin, _dt.date(2026, 10, 4))
+    hx = {"HX-Request": "true"}
+
+    # 지난 경기에도 댓글·답글 가능, 답글의 답글은 같은 원댓글 아래로
+    _login_as(client, db, a)
+    client.post(f"/s/{past.id}/comments", data={"body": "오늘 수고했어요"}, headers=hx)
+    top = ops.list_comments(db, past)[0]
+    _login_as(client, db, b)
+    client.post(f"/s/{past.id}/comments", data={"body": "고생했어요!", "parent_id": str(top.id)}, headers=hx)
+    reply = db.scalar(select(SessionComment).where(SessionComment.parent_id == top.id))
+    client.post(f"/s/{past.id}/comments", data={"body": "다음 주에 봐요", "parent_id": str(reply.id)}, headers=hx)
+    db.expire_all()
+    tops = ops.list_comments(db, past)
+    assert len(tops) == 1 and [r.body for r in tops[0].replies] == ["고생했어요!", "다음 주에 봐요"]
+
+    # 지난 경기 '경기' 화면에 그 경기 댓글 + 답글 버튼, 경기 기록 목록에 댓글 수
+    day = client.get(f"/s/{past.id}/day").text
+    assert "오늘 수고했어요" in day and "고생했어요!" in day and "kbReply" in day
+    games = client.get("/games").text
+    assert f"/s/{past.id}/day" in games and "💬 3" in games
+
+    # 답글 달린 원댓글을 지우면 '삭제된 댓글'로 남고 답글은 유지
+    _login_as(client, db, a)
+    client.post(f"/s/{past.id}/comments/{top.id}/delete", headers=hx)
+    db.expire_all()
+    tops = ops.list_comments(db, past)
+    assert tops[0].is_deleted and len(tops[0].replies) == 2
+    assert "삭제된 댓글이에요" in client.get(f"/s/{past.id}/day").text
+    assert ops.comment_count(db, past) == 2
+    # 답글을 모두 지우면 삭제된 원댓글 자리도 정리
+    _login_as(client, db, b)
+    for r in list(tops[0].replies):
+        client.post(f"/s/{past.id}/comments/{r.id}/delete", headers=hx)
+    db.expire_all()
+    assert ops.list_comments(db, past) == []
