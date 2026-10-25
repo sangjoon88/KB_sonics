@@ -16,13 +16,4 @@
     <button class="w-full {{ btn_cls() }}">저장</button>
   </form>
 {% endcall %}
-{% call card() %}
-  <h2 class="font-bold">경기 결과 공개</h2>
-  <p class="text-xs text-stone-500">끄면 멤버 화면(홈·오늘 경기·기록·내 기록)에서 점수·승패·승률·연승이 사라져요. 운영진이 봐도 똑같아요.
-    점수는 계속 기록되어 팀 짜기(레이팅)에 쓰이고, 운영 화면(경기 운영·점수 입력)에서만 보여요.</p>
-  <form method="post" action="/admin/settings/results" class="mt-3 grid grid-cols-2 gap-2">
-    <button name="show" value="0" class="rounded-lg py-3 font-semibold {{ 'bg-stone-800 text-white' if not show_results else 'bg-stone-100' }}">비공개 (기본)</button>
-    <button name="show" value="1" class="rounded-lg py-3 font-semibold {{ 'bg-stone-800 text-white' if show_results else 'bg-stone-100' }}">공개</button>
-  </form>
-{% endcall %}
 {% endblock %}

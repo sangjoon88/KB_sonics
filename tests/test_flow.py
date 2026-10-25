@@ -827,8 +827,15 @@ def test_results_hidden_from_member_screens_by_default(client, db):
     for name, html in member_pages().items():
         assert "승률" not in html and "57" not in html, name
 
-    # 공개로 바꾸면 다시 보임
+    # 설정 화면에 공개 스위치는 없다 (코드의 RESULTS_PUBLIC 로만 변경)
     client.cookies.clear()
     client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"})
-    client.post("/admin/settings/results", data={"show": "1"})
-    assert "57" in client.get(f"/s/{s.id}/day").text and "승률" in client.get("/stats").text
+    assert "경기 결과 공개" not in client.get("/admin/settings").text
+    assert client.post("/admin/settings/results", data={"show": "1"}).status_code in (404, 405)
+    # RESULTS_PUBLIC = True 로 바꾸면 다시 보임
+    import app.services.ops as _ops
+    _ops.RESULTS_PUBLIC = True
+    try:
+        assert "57" in client.get(f"/s/{s.id}/day").text and "승률" in client.get("/stats").text
+    finally:
+        _ops.RESULTS_PUBLIC = False

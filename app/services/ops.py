@@ -47,10 +47,13 @@ def balance_mode(db: Session) -> str:
     return mode if mode in BALANCE_MODES else "balanced"
 
 
+RESULTS_PUBLIC = False   # 경기 과열 방지: 멤버 화면에 점수·승패·승률·연승 비공개. 다시 공개하려면 True 로.
+
+
 def results_public(db: Session) -> bool:
-    """경기 결과(점수·승패·승률·연승)를 멤버 화면에 공개할지. 기본 비공개 — 과열 방지.
+    """경기 결과를 멤버 화면에 공개할지 (운영진이 멤버 화면을 볼 때도 동일).
     비공개여도 점수는 계속 기록되고(레이팅 계산), 운영 화면에서는 보인다."""
-    return get_setting(db, "show_results", "0") == "1"
+    return RESULTS_PUBLIC
 
 
 def current_weights(db: Session) -> dict:
