@@ -1029,3 +1029,62 @@ def test_admin_results_tab(client, db):
     # 일반 멤버는 접근 불가
     _login_as(client, db, ms[0])
     assert client.get("/admin/results", follow_redirects=False).status_code == 303
+
+
+def test_no_member_route_exposes_results(client, db):
+    """일반 멤버가 열 수 있는 모든 GET 주소(화면 + API)를 돌며 점수·승패·승률이 없는지 확인."""
+    import datetime as _dt
+    import re
+    from fastapi.routing import APIRoute
+    from app.main import app as fastapi_app
+    admin = _login_admin(client, db)
+    ms = [Member(name=f"감사{i}", position="GFC"[i % 3], height_cm=175 + i) for i in range(5)]
+    db.add_all(ms)
+    db.commit()
+    everyone = [admin, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, _dt.date(2026, 10, 4))
+    for m in everyone:
+        ops.set_checkin(db, admin, s, m.id, True)
+    guest = ops.add_guest(db, s, ms[0], "감사손님", grade=3, height=181, checked_in=True, by_admin=admin).member
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 87, 69)          # 다른 숫자와 겹치지 않는 점수
+    g2 = ops.create_game2(db, admin, s, "kept")
+    ops.submit_result(db, admin, g2, 93, 71)
+    db.expire_all()
+
+    member = ms[1]
+    _login_as(client, db, member)
+    params = {"session_id": s.id, "sid": s.id, "member_id": member.id, "mid": member.id,
+              "guest_id": guest.id, "gid": g1.id, "comment_id": 1, "no": 1}
+    def all_routes(routes):   # include_router 로 묶인 라우터(버전에 따라 중첩)까지 펼친다
+        for rt in routes:
+            inner = getattr(rt, "original_router", None)
+            if inner is not None:
+                yield from all_routes(inner.routes)
+            else:
+                yield rt
+
+    checked = []
+    for route in all_routes(fastapi_app.routes):
+        if not isinstance(route, APIRoute) or "GET" not in route.methods:
+            continue
+        path = route.path
+        if path.startswith("/admin") or path in ("/api/docs", "/api/openapi.json", "/setup", "/health",
+                                                 "/arcade.js", "/favicon.svg", "/logout"):   # 정적 파일·로그아웃 제외
+            continue
+        if path.startswith("/api/admin"):
+            continue
+        url = re.sub(r"\{(\w+)(:\w+)?\}", lambda mt: str(params.get(mt.group(1), 1)), path)
+        if "season" in [p.name for p in route.dependant.query_params]:
+            url += "?season=2026"
+        r = client.get(url, follow_redirects=True)
+        if r.status_code >= 400:
+            continue
+        body = r.text
+        for leak in ("87", "69", "93", "71"):
+            assert not re.search(rf"(?<!\d){leak}(?!\d)", body), f"{url} 에 점수 {leak} 노출"
+        for word in ("승률", "win_rate", '"wins"', '"winner"', "score_a", "연승"):
+            assert word not in body, f"{url} 에 '{word}' 노출"
+        checked.append(url)
+    assert len(checked) >= 15, checked                     # 화면·API 대부분을 실제로 열어봤는지
