@@ -61,3 +61,18 @@
   {% for p, label in [('G','가드'),('F','포워드'),('C','센터')] %}<option value="{{ p }}" {{ 'selected' if second == p }}>부 {{ label }}</option>{% endfor %}
 </select>
 {%- endmacro %}
+
+{# 팀 명단용: 게스트는 등번호가 없으니 그 자리에 키(초록 숫자), 멤버는 등번호 #}
+{% macro bn_or_height(m) -%}
+{% if m.is_guest %}<span class="shrink-0 tabular-nums text-[11px] font-bold text-emerald-500 inline-block min-w-[1.75rem] text-right" title="키(cm)">{{ m.height_cm or '?' }}</span>{% else %}{{ bn(m) }}{% endif %}
+{%- endmacro %}
+
+{# 팀 명단용: 게스트 태그를 칸 오른쪽 위 모서리에 (칸에 relative 필요) — 이름 자리를 차지하지 않는다 #}
+{% macro guest_corner(m) -%}
+{% if m.is_guest %}<span class="absolute -top-1.5 right-1 pointer-events-none">{{ guest_tag(m, small=True) }}</span>{% endif %}
+{%- endmacro %}
+
+{# 팀 명단용: 조퇴 시각을 칸 오른쪽 아래 모서리에 (칸에 relative 필요) #}
+{% macro leave_corner(t) -%}
+{% if t %}<span class="absolute -bottom-1.5 right-1 pointer-events-none whitespace-nowrap text-[9px] leading-[12px] px-[3px] rounded bg-amber-100 text-amber-800">⏰{{ t }}</span>{% endif %}
+{%- endmacro %}

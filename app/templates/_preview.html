@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, bn, leave, team_name %}
+{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, bn, leave, team_name, bn_or_height, guest_corner, leave_corner %}
 {% call card() %}
   {% if g1 %}
     <div class="flex items-center justify-between">
@@ -14,11 +14,11 @@
       {% for side, members, color in [('A', pv.a, 'orange'), ('B', pv.b, 'sky')] %}
       <div>
         <div class="text-sm font-bold mb-1">{{ team_name(side) }} <span class="font-normal text-stone-400">{{ members|length }}</span></div>
-        <ul class="space-y-1.5">
+        <ul class="space-y-2">
           {% for m in members %}
           <li class="relative flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1 {{ 'ring-2 ring-orange-400' if me and m.id == me.id }}">
             {# 게스트는 등번호가 없으니 그 자리에 키를 보여준다 (# 없이 초록색 숫자) #}
-            {% if m.is_guest %}<span class="shrink-0 tabular-nums text-[11px] font-bold text-emerald-500 inline-block min-w-[1.75rem] text-right" title="키(cm)">{{ m.height_cm or '?' }}</span>{% else %}{{ bn(m) }}{% endif %}
+            {{ bn_or_height(m) }}
             <span class="shrink-0">{{ pos_badge(m.position, slot=True) }}</span>
             {% if m.is_guest and (admin or (me and pv.inviters.get(m.id) == me.id)) %}
             <button type="button" hx-get="/s/{{ s.id }}/guests/{{ m.id }}/edit" hx-target="#kb-dialog-body"
@@ -27,8 +27,8 @@
             <span class="truncate flex-1">{{ m.name }}</span>
             {% endif %}
             {# 게스트 태그는 칸 오른쪽 위 모서리에 작게 (이름 자리를 차지하지 않도록) #}
-            {% if m.is_guest %}<span class="absolute -top-1.5 right-1">{{ guest_tag(m, small=True) }}</span>{% endif %}
-            {{ leave(pv.early.get(m.id)) }}
+            {{ guest_corner(m) }}
+            {{ leave_corner(pv.early.get(m.id)) }}
           </li>
           {% endfor %}
         </ul>

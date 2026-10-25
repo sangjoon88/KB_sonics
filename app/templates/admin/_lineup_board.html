@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag, bn, leave, team_name %}
+{% from "_macros.html" import card, pos_badge, pos_badges, balance_badge, btn_cls, guest_tag, bn, leave, team_name, bn_or_height, guest_corner %}
 {% set editable = game.status != 'finished' %}
 {% set can_remove = editable and no == 2 %}
 <div class="space-y-3">
@@ -13,20 +13,20 @@
     {% for side, members, color in [('A', team_a, 'orange'), ('B', team_b, 'sky')] %}
     <div class="bg-white rounded-xl border border-stone-200 p-2">
       <div class="text-sm font-bold px-1 mb-1">{{ team_name(side) }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
-      <div class="space-y-1">
+      <div class="space-y-1.5">
       {% for m in members %}
         <div class="flex items-stretch gap-1">
         <button {% if editable %}hx-post="/admin/s/{{ s.id }}/game/{{ no }}/move/{{ m.id }}" hx-target="#board"{% else %}disabled{% endif %}
-                class="min-w-0 flex-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-1.5 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
+                class="relative min-w-0 flex-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-1.5 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
           {# 1줄: 포지션 + 이름 (이름이 폭을 우선 차지) / 2줄: 키·조퇴·게스트 #}
           <span class="flex items-center gap-1 min-w-0">
-            {{ bn(m) }}<span class="shrink-0 whitespace-nowrap">{{ pos_badges(m, slot=True) }}</span><span class="truncate font-medium">{{ m.name }}</span>
+            {{ bn_or_height(m) }}<span class="shrink-0 whitespace-nowrap">{{ pos_badges(m, slot=True) }}</span><span class="truncate font-medium">{{ m.name }}</span>
           </span>
           <span class="flex items-center gap-1.5 mt-0.5 text-[10px] text-stone-400 whitespace-nowrap overflow-hidden">
-            <span>{{ m.height_cm ~ 'cm' if m.height_cm else '키 ?' }}</span>
+            {% if not m.is_guest %}<span>{{ m.height_cm ~ 'cm' if m.height_cm else '키 ?' }}</span>{% else %}<span>&nbsp;</span>{% endif %}
             {{ leave(early.get(m.id) if early) }}
-            {{ guest_tag(m) }}
           </span>
+          {{ guest_corner(m) }}
         </button>
         {% if can_remove %}
         <button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/remove/{{ m.id }}" hx-target="#board"
