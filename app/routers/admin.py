@@ -325,8 +325,13 @@ def choose_page(request: Request, sid: int, db: Session = Depends(get_db), admin
     if g1 is None or g1.status != "finished":
         return redirect(f"/admin/s/{sid}", err="게임 1 결과를 먼저 입력하세요.")
     judged = lopsided.judge(g1.score_a, g1.score_b)
+    early = ops.early_leaver_ids(s)
+    present = {m.id for m in ops.checked_in_members(db, s)}
+    early_by_side = {side: [r.member for r in g1.roster if r.side == side and r.member_id in early and r.member_id in present]
+                     for side in ("A", "B")}
+    early_crowded = {side: ms for side, ms in early_by_side.items() if len(ms) >= 2}
     return render(request, "admin/choose.html", {
-        "s": s, "g1": g1, "judged": judged, "g2": ops.get_game(db, s, 2),
+        "s": s, "g1": g1, "judged": judged, "g2": ops.get_game(db, s, 2), "early_crowded": early_crowded,
         "margin_limit": LOPSIDED_MARGIN, "ratio_limit": LOPSIDED_RATIO,
     }, member=admin, admin=admin)
 

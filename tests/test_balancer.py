@@ -100,3 +100,14 @@ def test_weekly_repeat_penalty_discourages_same_pairs():
 def test_missing_heights_do_not_crash():
     players = [Player(i + 1, 20 + i, "G", None if i % 2 else 180) for i in range(10)]
     assert balance(players)
+
+
+def test_early_leavers_spread_across_teams():
+    """게임 2: 조퇴 예정자는 가급적 양 팀에 나뉜다 (실력·키가 같아 다른 기준이 없을 때)."""
+    players = [Player(i + 1, 25.0, "GFC"[i % 3], 180) for i in range(10)]
+    early = {1, 2, 3, 4}
+    best = balance(players, split_tallest_n=0, early_ids=early)[0]
+    in_a = sum(1 for i in best.team_a if i in early)
+    assert in_a == 2 and best.breakdown["early_together"] == 2 * 4.0   # 2:2 로 나뉨 → 같은 팀 쌍 2개
+    # 조퇴자가 없으면 페널티 없음
+    assert balance(players, split_tallest_n=0)[0].breakdown["early_together"] == 0

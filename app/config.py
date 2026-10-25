@@ -45,7 +45,8 @@ GAMES_PER_SESSION = 2
 REPEAT_LOOKBACK_WEEKS = 3
 REPEAT_DECAY = [1.0, 0.6, 0.3]
 WEIGHTS = {"strength": 1.0, "position": 2.0, "height": 1.0,
-           "repeat_weekly": 0.8, "repeat_game1": 3.0}
+           "repeat_weekly": 0.8, "repeat_game1": 3.0,
+           "early_split": 4.0}   # 게임 2: 조퇴 예정자끼리 같은 팀이면 한 쌍당 (실력 1등급 차이와 같은 무게)
 BALANCE_MODES = {"skill": 0.5, "balanced": 1.0, "height": 2.0}   # w_height
 BALANCE_MODE_LABELS = {"skill": "실력 우선", "balanced": "균형", "height": "키 우선"}
 RANK_WEIGHTS = [1.5, 1.3, 1.0, 0.8, 0.7, 0.7]

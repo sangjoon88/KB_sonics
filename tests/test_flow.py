@@ -883,3 +883,45 @@ def test_comment_replies_and_past_games(client, db):
         client.post(f"/s/{past.id}/comments/{r.id}/delete", headers=hx)
     db.expire_all()
     assert ops.list_comments(db, past) == []
+
+
+def test_game2_reshuffle_spreads_early_leavers_and_red_white(client, db):
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    ms = [Member(name=f"분산{i}", position="GFC"[i % 3], height_cm=178) for i in range(9)]
+    db.add_all(ms)
+    db.commit()
+    everyone = [admin, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, _dt.date(2099, 11, 1))
+    early = ms[:4]
+    for m in everyone:
+        ops.vote(db, s, m, "early" if m in early else "yes", "10:00" if m in early else None)
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    # 게임 1에서 조퇴자 4명을 한 팀(RED)에 몰아두기
+    for r in g1.roster:
+        r.side = "A" if r.member in early or r.member is admin else "B"
+    db.commit()
+    ops.submit_result(db, admin, g1, 40, 38)
+    db.expire_all()
+    page = client.get(f"/admin/s/{s.id}/game/2/choose").text
+    assert "조퇴 예정자가 한 팀에 몰려 있어요" in page and "RED" in page
+    g2 = ops.create_game2(db, admin, s, "reshuffled")
+    early_ids = {m.id for m in early}
+    a_cnt = sum(1 for r in g2.roster if r.side == "A" and r.member_id in early_ids)
+    assert a_cnt == 2                                               # 2:2 로 나뉨
+    lineup = client.get(f"/admin/s/{s.id}/game/2/lineup").text
+    assert "RED" in lineup and "WHITE" in lineup and "A팀" not in lineup
+
+
+def test_member_roster_popup(client, db):
+    admin = _login_admin(client, db)
+    ops.create_member(db, admin, "명단1", "G", 180)
+    db.add(Member(name="손님X", is_guest=True, is_active=False))
+    db.commit()
+    assert "함께 뛰는 멤버 ›" in client.get("/").text
+    r = client.get("/members/roster")
+    assert r.status_code == 200 and "명단1" in r.text and "손님X" not in r.text and "180" not in r.text
+    client.cookies.clear()
+    assert client.get("/members/roster").status_code == 403

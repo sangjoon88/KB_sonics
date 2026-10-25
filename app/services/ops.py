@@ -727,6 +727,11 @@ def remove_from_lineup(db: Session, admin: Member, game: Game, member_id: int) -
     return game
 
 
+def early_leaver_ids(s: ClubSession) -> set[int]:
+    """조퇴로 투표한 사람 (게임 2에서 같은 팀에 몰리지 않게)."""
+    return {a.member_id for a in s.attendances if a.vote == "early"}
+
+
 def _rebalance_game2(db: Session, game: Game) -> bool:
     """현재 게임 2 명단 인원만으로 재편성(게임 1 반복 조합 고려). 불가능하면 False."""
     members = [r.member for r in game.roster]
@@ -737,7 +742,8 @@ def _rebalance_game2(db: Session, game: Game) -> bool:
     try:
         cands = balancer.balance(_players(members), weights=current_weights(db),
                                  weekly_pairs=weekly_history(db, game.session),
-                                 game1_sides=_sides(g1) if g1 else None, top_k=TOP_K_CANDIDATES)
+                                 game1_sides=_sides(g1) if g1 else None, top_k=TOP_K_CANDIDATES,
+                                 early_ids=early_leaver_ids(game.session))
     except balancer.BalanceError:
         return False
     game.candidates = [[c.team_a, c.team_b] for c in cands]
@@ -756,7 +762,8 @@ def evaluate_game(db: Session, game: Game) -> balancer.Candidate | None:
         g1 = get_game(db, game.session, 1)
         game1_sides = _sides(g1) if g1 else None
     return balancer.evaluate(_players(team_a), _players(team_b), weights=current_weights(db),
-                             weekly_pairs=weekly_history(db, game.session), game1_sides=game1_sides)
+                             weekly_pairs=weekly_history(db, game.session), game1_sides=game1_sides,
+                             early_ids=early_leaver_ids(game.session) if game.game_no == 2 else None)
 
 
 def create_game2(db: Session, admin: Member, s: ClubSession, mode: str) -> Game:
@@ -794,7 +801,7 @@ def create_game2(db: Session, admin: Member, s: ClubSession, mode: str) -> Game:
         try:
             cands = balancer.balance(_players(members), weights=current_weights(db),
                                      weekly_pairs=weekly_history(db, s), game1_sides=g1_sides,
-                                     top_k=TOP_K_CANDIDATES)
+                                     top_k=TOP_K_CANDIDATES, early_ids=early_leaver_ids(s))
         except balancer.BalanceError as e:
             raise OpError(str(e)) from e
         team_a, team_b = cands[0].team_a, cands[0].team_b

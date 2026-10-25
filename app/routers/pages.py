@@ -487,6 +487,24 @@ def day_partial(request: Request, session_id: int, db: Session = Depends(get_db)
     return render(request, "_day_games.html", _day_context(db, s, admin), member=me, admin=admin)
 
 
+# ---------------------------------------------------------------- 함께 뛰는 멤버 (홈 → 팝업)
+
+@router.get("/members/roster")
+def member_roster(request: Request, db: Session = Depends(get_db), me=Depends(current_member),
+                  admin=Depends(current_admin)):
+    if me is None:
+        raise HTTPException(403, "이름을 먼저 선택하세요.")
+    members = db.scalars(select(Member).where(Member.is_active.is_(True), Member.is_guest.is_(False))).all()
+
+    def num(m):
+        try:
+            return (0, int(m.back_number))
+        except (TypeError, ValueError):
+            return (1, 0)
+    members = sorted(members, key=lambda m: (num(m), m.name))
+    return render(request, "_member_roster.html", {"members": members}, member=me, admin=admin)
+
+
 # ---------------------------------------------------------------- 경기 기록 (지난 경기 목록)
 
 @router.get("/games")

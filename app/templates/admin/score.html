@@ -7,7 +7,7 @@
 {% if game.status == 'finished' %}<p class="text-xs text-amber-700">수정하면 이 게임 이후 레이팅이 모두 재계산됩니다.</p>{% endif %}
 <form method="post" action="/admin/s/{{ s.id }}/game/{{ game.game_no }}/score" class="space-y-4">
   <div class="grid grid-cols-2 gap-3">
-    {% for side, names, color, val in [('a', team_a, 'orange', game.score_a), ('b', team_b, 'sky', game.score_b)] %}
+    {% for side, names, color, val in [('a', team_a, 'red', game.score_a), ('b', team_b, 'slate', game.score_b)] %}
     <label class="block bg-white rounded-xl border-2 border-{{ color }}-300 p-3">
       <div class="font-bold">{{ team_name(side) }}</div>
       <input name="score_{{ side }}" type="number" inputmode="numeric" min="0" max="300" required

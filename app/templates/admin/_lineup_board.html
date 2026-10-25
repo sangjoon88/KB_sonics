@@ -10,7 +10,7 @@
   </div>
   {% if editable %}<p class="text-xs text-stone-500">선수를 탭하면 반대 팀으로 이동합니다.{% if can_remove %} 게임 2를 못 뛰는 사람은 ✕로 빼세요{{ ' (남은 인원으로 자동 재편성)' if game.lineup_mode == 'reshuffled' }}.{% endif %}</p>{% endif %}
   <div class="grid grid-cols-2 gap-3">
-    {% for side, members, color in [('A', team_a, 'orange'), ('B', team_b, 'sky')] %}
+    {% for side, members, color in [('A', team_a, 'red'), ('B', team_b, 'slate')] %}
     <div class="bg-white rounded-xl border border-stone-200 p-2">
       <div class="text-sm font-bold px-1 mb-1">{{ team_name(side) }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
       <div class="space-y-1.5">
@@ -69,6 +69,7 @@
       <tr><td>키 매치업 차</td><td class="text-right">{{ '%.2f'|format(ev.breakdown.height_matchup_gap) }}</td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.height) }}</td></tr>
       <tr><td>지난주 반복 조합</td><td></td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.repeat_weekly) }}</td></tr>
       {% if ev.breakdown.repeat_game1 %}<tr><td>게임 1 반복 조합</td><td></td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.repeat_game1) }}</td></tr>{% endif %}
+      {% if ev.breakdown.early_together %}<tr><td>조퇴자 같은 팀</td><td></td><td class="text-right text-stone-400">{{ '%.2f'|format(ev.breakdown.early_together) }}</td></tr>{% endif %}
       <tr class="border-t font-bold"><td>총 불균형 점수 <span class="font-normal text-stone-400">(낮을수록 좋음)</span></td><td></td><td class="text-right">{{ '%.2f'|format(ev.cost) }}</td></tr>
     </table>
     {% set mu_a = team_a|map(attribute='mu')|list %}{% set mu_b = team_b|map(attribute='mu')|list %}

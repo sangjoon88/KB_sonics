@@ -94,6 +94,7 @@
     .site-header { background: var(--team-deep); border-bottom: 3px solid var(--team-bright); }
     .site-logo { color: rgb(var(--logo)); letter-spacing: .02em; }
     .team-label { color: #1c1917; }
+    html:not(.dark) .bg-slate-50 { background-color: #eef1f5; }
     html.dark .team-label { color: #ffffff; }
 
     /* ---------- 다크 모드 (기본) ---------- */
@@ -135,7 +136,10 @@
     html.dark .border-sky-300 { border-color: rgba(56, 189, 248, .45); }
     html.dark .ring-orange-400 { --tw-ring-color: var(--team-bright); }
 
-    /* 상태 색 (B팀·알림·배지) — 어두운 배경에서 읽히도록 */
+    /* 상태 색 (WHITE팀·알림·배지) — 어두운 배경에서 읽히도록 */
+    html.dark .bg-slate-50 { background-color: rgba(226, 232, 240, .1); }
+    html.dark .bg-slate-200 { background-color: rgba(226, 232, 240, .2); }
+    html.dark .border-slate-300 { border-color: rgba(226, 232, 240, .35); }
     html.dark .bg-sky-50 { background-color: rgba(56, 189, 248, .12); }
     html.dark .bg-sky-100 { background-color: rgba(56, 189, 248, .2); }
     html.dark .bg-sky-200 { background-color: rgba(56, 189, 248, .3); }

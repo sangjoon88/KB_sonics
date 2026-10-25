@@ -11,7 +11,7 @@
       {{ balance_badge(pv.label) }}
     </div>
     <div class="mt-3 grid grid-cols-2 gap-3">
-      {% for side, members, color in [('A', pv.a, 'orange'), ('B', pv.b, 'sky')] %}
+      {% for side, members, color in [('A', pv.a, 'red'), ('B', pv.b, 'slate')] %}
       <div>
         <div class="text-sm font-bold mb-1">{{ team_name(side) }} <span class="font-normal text-stone-400">{{ members|length }}</span></div>
         <ul class="space-y-2">

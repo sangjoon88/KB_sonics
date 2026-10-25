@@ -65,8 +65,9 @@ def _same_team_pairs(ids: list[int]):
 def evaluate(team_a: list[Player], team_b: list[Player], *, weights: dict | None = None,
              heights: dict[int, float] | None = None,
              weekly_pairs: dict[tuple[int, int], float] | None = None,
-             game1_sides: dict[int, str] | None = None) -> Candidate:
-    """두 팀 구성의 비용과 항목별 내역 계산."""
+             game1_sides: dict[int, str] | None = None,
+             early_ids: set[int] | None = None) -> Candidate:
+    """두 팀 구성의 비용과 항목별 내역 계산. early_ids: 조퇴 예정자 (같은 팀에 몰리지 않게)."""
     w = {**WEIGHTS, **(weights or {})}
     heights = heights or _filled_heights(team_a + team_b)
     if not team_a or not team_b:
@@ -96,10 +97,20 @@ def evaluate(team_a: list[Player], team_b: list[Player], *, weights: dict | None
         "height": w["height"] * h_gap,
         "repeat_weekly": w["repeat_weekly"] * weekly,
         "repeat_game1": w["repeat_game1"] * g1 if game1_sides else 0.0,
+        "early_together": w.get("early_split", 0.0) * _early_pairs(ids_a, ids_b, early_ids),
     }
     raw = {"strength_gap": strength_gap, "position_gap": pos_gap, "height_matchup_gap": h_gap}
     return Candidate(team_a=ids_a, team_b=ids_b, cost=sum(breakdown.values()),
                      breakdown={**breakdown, **raw})
+
+
+def _early_pairs(ids_a: list[int], ids_b: list[int], early_ids: set[int] | None) -> int:
+    """조퇴 예정자끼리 같은 팀인 쌍의 수 (양 팀에 고르게 나뉠수록 작다)."""
+    if not early_ids:
+        return 0
+    ea = sum(1 for i in ids_a if i in early_ids)
+    eb = sum(1 for i in ids_b if i in early_ids)
+    return ea * (ea - 1) // 2 + eb * (eb - 1) // 2
 
 
 def swaps_vs(team_a: list[int], team_b: list[int], game1_sides: dict[int, str]) -> int:
@@ -119,7 +130,8 @@ def balance(players: list[Player], *, weights: dict | None = None,
             game1_sides: dict[int, str] | None = None,
             top_k: int = TOP_K_CANDIDATES,
             split_tallest_n: int = SPLIT_TALLEST_N,
-            min_swaps: int = MIN_SWAPS_ON_RESHUFFLE) -> list[Candidate]:
+            min_swaps: int = MIN_SWAPS_ON_RESHUFFLE,
+            early_ids: set[int] | None = None) -> list[Candidate]:
     """모든 2팀 분할을 계산해 cost 하위 top_k 후보를 반환.
 
     - 대칭 제거: 첫 번째 선수를 항상 A팀에 고정
@@ -163,7 +175,7 @@ def balance(players: list[Player], *, weights: dict | None = None,
                                           game1_sides) < min_swaps:
                 continue
             cand = evaluate(team_a, team_b, weights=weights, heights=heights,
-                            weekly_pairs=weekly_pairs, game1_sides=game1_sides)
+                            weekly_pairs=weekly_pairs, game1_sides=game1_sides, early_ids=early_ids)
             counter += 1
             item = (-cand.cost, counter, cand)
             if len(heap) < top_k:

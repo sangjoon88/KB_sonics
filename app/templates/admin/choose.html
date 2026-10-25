@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls %}
+{% from "_macros.html" import card, btn_cls, team_name %}
 {% block title %}게임 2 팀 선택{% endblock %}
 {% block content %}
 <a href="/admin/s/{{ s.id }}" class="text-sm text-stone-500">‹ {{ fmt_date(s.date) }} 운영</a>
@@ -14,6 +14,13 @@
   {% endif %}
   <p class="mt-2 text-xs text-stone-500 text-center">점수차 {{ judged.margin }}점 (기준 {{ margin_limit }}점↑) · 득점비 {{ '%.2f'|format(judged.ratio) }} (기준 {{ ratio_limit }}↓)</p>
 {% endcall %}
+{% if early_crowded %}
+<div class="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 text-sm">
+  ⏰ 조퇴 예정자가 한 팀에 몰려 있어요 —
+  {% for side, ms in early_crowded.items() %}{{ team_name(side) }} {{ ms|map(attribute='name')|join(', ') }}{{ ' / ' if not loop.last }}{% endfor %}.
+  <b>팀 재편성</b>을 고르면 양 팀에 나눠 배치해요.
+</div>
+{% endif %}
 {% if g2 and g2.status == 'finished' %}
   <p class="text-sm text-stone-600">게임 2 결과가 이미 입력되어 팀을 바꿀 수 없습니다.</p>
 {% else %}
