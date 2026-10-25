@@ -462,8 +462,18 @@ def ratings_page(request: Request, db: Session = Depends(get_db), admin=Depends(
 
 @router.get("/settings")
 def settings_page(request: Request, db: Session = Depends(get_db), admin=Depends(admin_page)):
-    return render(request, "admin/settings.html", {"mode": ops.balance_mode(db), "modes": BALANCE_MODES},
+    return render(request, "admin/settings.html", {"mode": ops.balance_mode(db), "modes": BALANCE_MODES,
+                                                   "show_results": ops.results_public(db)},
                   member=admin, admin=admin)
+
+
+@router.post("/settings/results")
+def settings_results(show: str = Form(""), db: Session = Depends(get_db), admin=Depends(admin_page)):
+    on = show == "1"
+    ops.set_setting(db, "show_results", "1" if on else "0")
+    ops.log(db, admin, "settings.show_results", "settings", {"value": on})
+    db.commit()
+    return redirect("/admin/settings", msg="경기 결과를 공개합니다." if on else "경기 결과를 비공개로 바꿨습니다.")
 
 
 @router.post("/settings")

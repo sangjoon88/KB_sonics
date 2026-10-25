@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, btn_cls, place, bn %}
+{% from "_macros.html" import card, btn_cls, place, bn, team_name %}
 {% block content %}
 <div class="flex items-end justify-between">
   <div>
@@ -90,8 +90,13 @@
 {# ---- 내 시즌 기록 ---- #}
 {% if my_st %}
 <a href="/me" class="block">
-  <div class="grid grid-cols-4 gap-2">
-    {% for label, value in [('출석', my_st.attended ~ '회'), ('경기', my_st.games), ('승률', (((my_st.win_rate*100)|round|int) ~ '%') if my_st.games else '-'), ('연승', ('🔥' ~ my_st.current_streak) if my_st.current_streak >= 2 else my_st.current_streak)] %}
+  {% if show_results %}
+  {% set tiles = [('출석', my_st.attended ~ '회'), ('경기', my_st.games), ('승률', (((my_st.win_rate*100)|round|int) ~ '%') if my_st.games else '-'), ('연승', ('🔥' ~ my_st.current_streak) if my_st.current_streak >= 2 else my_st.current_streak)] %}
+  {% else %}
+  {% set tiles = [('출석', my_st.attended ~ '회'), ('출석률', ((my_st.attendance_rate*100)|round|int) ~ '%'), ('경기', my_st.games)] %}
+  {% endif %}
+  <div class="grid {{ 'grid-cols-4' if show_results else 'grid-cols-3' }} gap-2">
+    {% for label, value in tiles %}
     <div class="bg-white rounded-xl border border-stone-200 py-2 text-center">
       <div class="text-[11px] text-stone-500">{{ label }}</div>
       <div class="text-lg font-bold">{{ value }}</div>
@@ -111,11 +116,18 @@
     <div class="mt-2 space-y-2">
       {% for g in last.games if g.status == 'finished' %}
       {% set my_side = (g.roster|selectattr('member_id', 'equalto', me.id)|map(attribute='side')|list or [None])[0] %}
+      {% if not show_results %}
+      <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
+        <span class="text-sm text-stone-600">게임 {{ g.game_no }}</span>
+        <span class="text-sm">{% if my_side %}{{ team_name(my_side) }}로 뛰었어요{% else %}<span class="text-stone-400">참여 안 함</span>{% endif %}</span>
+      </div>
+      {% else %}
       <div class="flex items-center justify-between rounded-lg bg-stone-50 px-3 py-2">
         <span class="text-sm text-stone-600">게임 {{ g.game_no }}</span>
         <span class="font-black text-lg"><span class="{{ 'text-orange-600' if g.winner == 'A' }}">{{ g.score_a }}</span> : <span class="{{ 'text-sky-600' if g.winner == 'B' }}">{{ g.score_b }}</span></span>
         <span class="text-xs w-10 text-right">{% if my_side %}{% if g.winner == 'draw' %}무{% elif g.winner == my_side %}<b class="text-orange-600">승</b>{% else %}<span class="text-stone-400">패</span>{% endif %}{% endif %}</span>
       </div>
+      {% endif %}
       {% endfor %}
     </div>
   {% endcall %}
@@ -128,12 +140,13 @@
       <a href="/stats" class="text-sm text-stone-500">전체 ›</a>
     </div>
     <div class="mt-2 grid grid-cols-2 gap-4 text-sm">
-      {% for title, rows, fmt in [('🏃 출석왕', top_att, 'att'), ('🔥 최장 연승', top_streak, 'streak')] %}
+      {% set boards = [('🏃 출석왕', top_att, 'att'), ('🔥 최장 연승', top_streak, 'streak')] if show_results else [('🏃 출석왕', top_att, 'att'), ('🏀 최다 경기', top_games, 'games')] %}
+      {% for title, rows, fmt in boards %}
       <div>
         <div class="text-xs text-stone-500 mb-1">{{ title }}</div>
         <ol class="space-y-1">
           {% for r in rows %}
-          <li class="flex justify-between {{ 'font-bold text-orange-700' if r.member_id == me.id }}"><span class="inline-flex items-center gap-1 whitespace-nowrap">{{ ['🥇','🥈','🥉'][loop.index0] }}{{ bn(r) }}<span>{{ r.name }}</span></span><span>{{ (r.attended ~ '회') if fmt == 'att' else (r.best_streak ~ '연승') }}</span></li>
+          <li class="flex justify-between {{ 'font-bold text-orange-700' if r.member_id == me.id }}"><span class="inline-flex items-center gap-1 whitespace-nowrap">{{ ['🥇','🥈','🥉'][loop.index0] }}{{ bn(r) }}<span>{{ r.name }}</span></span><span>{{ (r.attended ~ '회') if fmt == 'att' else (r.games ~ '경기') if fmt == 'games' else (r.best_streak ~ '연승') }}</span></li>
           {% else %}
           <li class="text-stone-400 text-xs">첫 경기가 끝나면 순위가 나와요</li>
           {% endfor %}

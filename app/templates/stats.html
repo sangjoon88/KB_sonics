@@ -3,15 +3,16 @@
 {% block title %}{{ season }} 기록{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold">{{ season }} 시즌 기록</h1>
-<div class="grid grid-cols-4 gap-1 bg-stone-200 rounded-lg p-1 text-sm">
-  {% for key, label in [('attendance','출석왕'),('winrate','승률'),('streak','연승'),('games','경기 수')] %}
+{% set tabs = [('attendance','출석왕'),('winrate','승률'),('streak','연승'),('games','경기 수')] if show_results else [('attendance','출석왕'),('games','경기 수')] %}
+<div class="grid {{ 'grid-cols-4' if show_results else 'grid-cols-2' }} gap-1 bg-stone-200 rounded-lg p-1 text-sm">
+  {% for key, label in tabs %}
   <a href="?sort={{ key }}" class="text-center rounded-md py-2 {{ 'bg-white font-bold shadow-sm' if sort == key else 'text-stone-600' }}">{{ label }}</a>
   {% endfor %}
 </div>
 {% call card(cls='p-0 overflow-hidden') %}
 <table class="w-full text-sm">
   <thead class="bg-stone-50 text-stone-500 text-xs whitespace-nowrap">
-    <tr><th class="py-2 w-10">순위</th><th class="text-left">이름</th><th>출석</th><th>경기</th><th>승률</th><th>최장 연승</th></tr>
+    <tr><th class="py-2 w-10">순위</th><th class="text-left">이름</th><th>출석</th><th>경기</th>{% if show_results %}<th>승률</th><th>최장 연승</th>{% endif %}</tr>
   </thead>
   <tbody>
   {% for r in rows %}
@@ -20,15 +21,17 @@
       <td class="font-medium whitespace-nowrap"><span class="inline-flex items-center gap-1.5">{{ bn(r) }}<span>{{ r.name }}</span></span></td>
       <td class="text-center {{ 'font-bold' if sort == 'attendance' }}">{{ r.attended }}<span class="ml-1 text-[10px] font-normal text-stone-400">{{ (r.attendance_rate*100)|round|int }}%</span></td>
       <td class="text-center {{ 'font-bold' if sort == 'games' }}">{{ r.games }}</td>
+      {% if show_results %}
       <td class="text-center {{ 'font-bold' if sort == 'winrate' }}">{% if r.games %}{{ (r.win_rate*100)|round|int }}%{% else %}-{% endif %}</td>
       <td class="text-center {{ 'font-bold' if sort == 'streak' }}">{{ r.best_streak }}{% if r.current_streak >= 2 %} <span class="text-[10px] text-orange-600">🔥{{ r.current_streak }}</span>{% endif %}</td>
+      {% endif %}
     </tr>
   {% else %}
-    <tr><td colspan="6" class="py-6 text-center text-stone-400">아직 기록이 없습니다.</td></tr>
+    <tr><td colspan="{{ 6 if show_results else 4 }}" class="py-6 text-center text-stone-400">아직 기록이 없습니다.</td></tr>
   {% endfor %}
   </tbody>
 </table>
 {% endcall %}
 <p class="text-xs text-stone-500">출석은 그날 경기를 1게임 이상 실제로 뛴 경우에만 셉니다. (투표만 하고 못 온 날은 제외)
-{% if sort == 'winrate' %}<br>승률은 이번 시즌 경기의 30% 이상 뛴 멤버만 순위에 나와요. (지금 기준: {{ min_games }}경기 이상){% endif %}</p>
+{% if show_results and sort == 'winrate' %}<br>승률은 이번 시즌 경기의 30% 이상 뛴 멤버만 순위에 나와요. (지금 기준: {{ min_games }}경기 이상){% endif %}</p>
 {% endblock %}

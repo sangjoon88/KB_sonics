@@ -6,7 +6,9 @@
       <div class="font-bold">게임 {{ g.game_no }} <span class="text-xs font-normal text-stone-500">{{ MODE_LABEL[g.lineup_mode] }}</span></div>
       {{ balance_badge(item.label) }}
     </div>
-    {% if g.status == 'finished' %}
+    {% if g.status == 'finished' and not show_results %}
+      <div class="mt-1 text-xs text-stone-500 text-center">경기 종료</div>
+    {% elif g.status == 'finished' %}
       <div class="mt-2 flex items-center justify-center gap-4 text-3xl font-black">
         <span class="{{ 'text-orange-600' if g.winner == 'A' else 'text-stone-400' }}">{{ g.score_a }}</span>
         <span class="text-stone-300 text-xl">:</span>
@@ -19,7 +21,7 @@
       {% for side, members, color in [('A', item.a, 'orange'), ('B', item.b, 'sky')] %}
       <div>
         <div class="text-sm font-bold mb-1">{{ team_name(side) }} <span class="font-normal text-stone-400">{{ members|length }}</span>
-          {% if g.winner == side %}<span class="text-xs">🏆</span>{% endif %}</div>
+          {% if show_results and g.winner == side %}<span class="text-xs">🏆</span>{% endif %}</div>
         <ul class="space-y-1">
           {% for m in members %}
           <li class="flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ bn(m) }}<span class="shrink-0">{{ pos_badge(m.position, slot=True) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_tag(m) }}{{ guest_height(m) }}{{ leave(early.get(m.id) if early) }}</li>

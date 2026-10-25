@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% from "_macros.html" import card, pos_badge, pos_badges %}
+{% from "_macros.html" import card, pos_badge, pos_badges, team_name %}
 {% block title %}내 기록{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between">
   <h1 class="text-2xl font-bold">{% if me.back_number %}<span class="tabular-nums text-lg font-black text-stone-400 mr-1.5">No.{{ me.back_number }}</span>{% endif %}{{ me.name }} {{ pos_badges(me) }}</h1>
   <a href="/logout" class="text-xs text-stone-500 underline">로그아웃</a>
 </div>
+{% set tiles = [('출석', st.attended ~ '회'), ('출석률', ((st.attendance_rate*100)|round|int) ~ '%'), ('경기', st.games)] %}
+{% if show_results %}{% set tiles = tiles + [('승률', (((st.win_rate*100)|round|int) ~ '%') if st.games else '-'), ('전적', st.wins ~ '승 ' ~ st.losses ~ '패' ~ ((' ' ~ st.draws ~ '무') if st.draws else '')), ('최장 연승', st.best_streak)] %}{% endif %}
 <div class="grid grid-cols-3 gap-2">
-  {% for label, value in [('출석', st.attended ~ '회'), ('출석률', ((st.attendance_rate*100)|round|int) ~ '%'), ('경기', st.games),
-                          ('승률', (((st.win_rate*100)|round|int) ~ '%') if st.games else '-'), ('전적', st.wins ~ '승 ' ~ st.losses ~ '패' ~ ((' ' ~ st.draws ~ '무') if st.draws else '')), ('최장 연승', st.best_streak)] %}
+  {% for label, value in tiles %}
   <div class="bg-white rounded-xl border border-stone-200 p-3 text-center">
     <div class="text-xs text-stone-500">{{ label }}</div>
     <div class="text-xl font-bold mt-1">{{ value }}</div>
@@ -21,7 +22,11 @@
   {% for r in st.recent[:10] %}
     <li class="py-2 flex items-center justify-between text-sm">
       <a href="/s/{{ r.session_id }}/day" class="text-stone-600">{{ fmt_date(r.date) }} 게임{{ r.game_no }}</a>
+      {% if show_results %}
       <span><b class="{{ {'W':'text-orange-600','L':'text-stone-400','D':'text-stone-600'}[r.result] }}">{{ {'W':'승','L':'패','D':'무'}[r.result] }}</b> {{ r.my }}:{{ r.opp }}</span>
+      {% else %}
+      <span>{{ team_name(r.side) }}</span>
+      {% endif %}
     </li>
   {% else %}
     <li class="py-4 text-center text-stone-400 text-sm">아직 경기 기록이 없습니다.</li>

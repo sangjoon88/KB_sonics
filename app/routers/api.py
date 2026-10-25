@@ -32,11 +32,23 @@ def _game_by_id(db: Session, gid: int) -> Game:
     return g
 
 
+RESULT_KEYS = ("wins", "losses", "draws", "win_rate", "best_streak", "current_streak")
+
+
+def _hide_results(d: dict) -> dict:
+    """경기 결과 비공개일 때 기록에서 승패 관련 값 제거."""
+    d = {k: v for k, v in d.items() if k not in RESULT_KEYS}
+    if "recent" in d:
+        d["recent"] = [{k: v for k, v in r.items() if k not in ("result", "my", "opp")} for r in d["recent"]]
+    return d
+
+
 def _game_out(db: Session, g: Game, *, admin: bool = False) -> dict:
     ev = ops.evaluate_game(db, g)
     out = {
         "id": g.id, "game_no": g.game_no, "lineup_mode": g.lineup_mode, "status": g.status,
-        "score_a": g.score_a, "score_b": g.score_b, "winner": g.winner,
+        **({"score_a": g.score_a, "score_b": g.score_b, "winner": g.winner}
+           if admin or ops.results_public(db) else {}),
         "team_a": [{"id": r.member_id, "name": r.member.name} for r in g.roster if r.side == "A"],
         "team_b": [{"id": r.member_id, "name": r.member.name} for r in g.roster if r.side == "B"],
         "balance": balance_label(ev.breakdown) if ev else None,
@@ -78,11 +90,13 @@ def patch_member(mid: int, body: MemberPatch, db: Session = Depends(get_db), adm
 
 
 @router.get("/members/{mid}/stats")
-def member_stats(mid: int, season: int | None = None, db: Session = Depends(get_db)):
+def member_stats(mid: int, season: int | None = None, db: Session = Depends(get_db),
+                 admin=Depends(current_admin)):
     st = compute_stats(db, season or settings.SEASON).get(mid)
     if st is None:
         raise HTTPException(404)
-    return {**st.as_dict(), "recent": [{**r, "date": r["date"].isoformat()} for r in st.recent[:10]]}
+    out = {**st.as_dict(), "recent": [{**r, "date": r["date"].isoformat()} for r in st.recent[:10]]}
+    return out if (admin or ops.results_public(db)) else _hide_results(out)
 
 
 # ---------------------------------------------------------------- 모임 / 참석
@@ -164,9 +178,9 @@ def lineup_move(gid: int, body: MoveIn, db: Session = Depends(get_db), admin=Dep
 
 
 @router.get("/sessions/{sid}/games")
-def list_games(sid: int, db: Session = Depends(get_db)):
+def list_games(sid: int, db: Session = Depends(get_db), admin=Depends(current_admin)):
     s = _session(db, sid)
-    return [_game_out(db, g) for g in s.games]
+    return [_game_out(db, g, admin=admin is not None) for g in s.games]
 
 
 # ---------------------------------------------------------------- 결과
@@ -195,9 +209,14 @@ def patch_result(gid: int, body: ResultIn, db: Session = Depends(get_db), admin=
 # ---------------------------------------------------------------- 기록
 
 @router.get("/stats")
-def stats(season: int | None = None, sort: str = "attendance", db: Session = Depends(get_db)):
+def stats(season: int | None = None, sort: str = "attendance", db: Session = Depends(get_db),
+          admin=Depends(current_admin)):
     st = compute_stats(db, season or settings.SEASON)
-    return [s.as_dict() for s in leaderboard(st, sort)]
+    show = admin is not None or ops.results_public(db)
+    if not show and sort not in ("attendance", "games"):
+        sort = "attendance"
+    rows = [s.as_dict() for s in leaderboard(st, sort)]
+    return rows if show else [_hide_results(r) for r in rows]
 
 
 @router.get("/admin/ratings")

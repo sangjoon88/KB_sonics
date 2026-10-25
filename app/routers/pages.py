@@ -78,6 +78,8 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
         "last": last, "my_st": stats.get(me.id),
         "top_att": leaderboard(stats, "attendance")[:3],
         "top_streak": [x for x in leaderboard(stats, "streak") if x.best_streak > 0][:3],
+        "top_games": [x for x in leaderboard(stats, "games") if x.games > 0][:3],
+        "show_results": ops.results_public(db),
         "member_summary": member_summary(db, today_kst()),
     })
     week = arcade.leaderboard(db, *arcade.week_range())
@@ -467,7 +469,8 @@ def _day_context(db: Session, s: ClubSession, admin) -> dict:
         })
     checked = sum(1 for a in s.attendances if a.checked_in)
     early = {a.member_id: a.leave_time for a in s.attendances if a.vote == "early" and a.leave_time}
-    return {"s": s, "games": games, "checked": checked, "admin": admin, "early": early}
+    return {"s": s, "games": games, "checked": checked, "admin": admin, "early": early,
+            "show_results": ops.results_public(db)}
 
 
 @router.get("/s/{session_id}/day")
@@ -490,9 +493,12 @@ def day_partial(request: Request, session_id: int, db: Session = Depends(get_db)
 def stats_page(request: Request, sort: str = "attendance", season: int | None = None,
                db: Session = Depends(get_db), me=Depends(current_member), admin=Depends(current_admin)):
     season = season or settings.SEASON
+    show = ops.results_public(db)
+    if not show and sort not in ("attendance", "games"):
+        sort = "attendance"          # 결과 비공개: 승률·연승 순위는 없다
     stats = compute_stats(db, season)
     rows = leaderboard(stats, sort)
-    return render(request, "stats.html", {"rows": rows, "sort": sort, "season": season,
+    return render(request, "stats.html", {"rows": rows, "sort": sort, "season": season, "show_results": show,
                                           "min_games": winrate_min_games(next(iter(stats.values())).season_games if stats else 0)},
                   member=me, admin=admin)
 
@@ -505,7 +511,7 @@ def my_page(request: Request, db: Session = Depends(get_db), me=Depends(current_
     if (gate := _gate(me, "/me")) is not None:
         return gate
     st = compute_stats(db, settings.SEASON).get(me.id)
-    return render(request, "me.html", {"st": st}, member=me, admin=admin)
+    return render(request, "me.html", {"st": st, "show_results": ops.results_public(db)}, member=me, admin=admin)
 
 
 # ---------------------------------------------------------------- 최초 세팅

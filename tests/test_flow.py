@@ -783,3 +783,52 @@ def test_guest_edit_permissions_and_update(client, db):
     db.refresh(g)
     assert g.height_cm == 190
     assert "guest.update" in client.get("/admin/logs").text
+
+
+def test_results_hidden_from_member_screens_by_default(client, db):
+    """기본은 경기 결과 비공개: 멤버 화면(운영진이 봐도)에는 점수·승패·승률·연승이 없다."""
+    import datetime as _dt
+    admin = _login_admin(client, db)
+    ms = [Member(name=f"결과{i}", position="GFC"[i % 3], height_cm=170 + i) for i in range(7)]
+    db.add_all(ms)
+    db.commit()
+    everyone = [admin, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, _dt.date(2099, 10, 4))
+    for m in everyone:
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 57, 43)
+    db.expire_all()
+
+    def member_pages():
+        return {
+            "home": client.get("/").text,
+            "day": client.get(f"/s/{s.id}/day").text,
+            "stats": client.get("/stats?sort=winrate").text,
+            "me": client.get("/me").text,
+        }
+
+    # 운영진이 봐도 멤버 화면에는 없음
+    pages = member_pages()
+    for name, html in pages.items():
+        assert "57" not in html and "43 " not in html, name
+        assert "승률" not in html and "연승" not in html and "🏆" not in html, name
+    assert "경기 종료" in pages["day"] and "최다 경기" in pages["home"]
+    # 운영 화면에서는 보임
+    assert "57 : 43" in client.get(f"/admin/s/{s.id}").text
+    # API: 일반 멤버는 결과 없음, 운영진은 전체
+    assert "score_a" in client.get(f"/api/sessions/{s.id}/games").json()[0]
+    _login_as(client, db, ms[0])
+    assert "score_a" not in client.get(f"/api/sessions/{s.id}/games").json()[0]
+    row = client.get("/api/stats?season=2099").json()[0]
+    assert "win_rate" not in row and "wins" not in row and "games" in row
+    assert "result" not in client.get(f"/api/members/{ms[0].id}/stats?season=2099").json()["recent"][0]
+    for name, html in member_pages().items():
+        assert "승률" not in html and "57" not in html, name
+
+    # 공개로 바꾸면 다시 보임
+    client.cookies.clear()
+    client.post("/pick/pin", data={"member_id": admin.id, "pin": "1234"})
+    client.post("/admin/settings/results", data={"show": "1"})
+    assert "57" in client.get(f"/s/{s.id}/day").text and "승률" in client.get("/stats").text
