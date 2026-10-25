@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card, bn, guest_tag, team_name %}
+{% block title %}승패 (운영진){% endblock %}
+{% block content %}
+{% set active = '/admin/results' %}{% include "admin/_nav.html" %}
+<h1 class="text-xl font-bold">승패 <span class="text-xs font-normal text-red-600">운영진 전용 · 공유 금지</span></h1>
+
+<div class="grid grid-cols-2 gap-1 bg-stone-200 rounded-lg p-1 text-sm">
+  {% for key, label in [('season', season ~ ' 시즌'), ('all', '전체 기간')] %}
+  <a href="?period={{ key }}&sort={{ sort }}" class="text-center rounded-md py-2 {{ 'bg-white font-bold shadow-sm' if period == key else 'text-stone-600' }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{# ---------------- ① 멤버별 승패표 ---------------- #}
+<h2 class="font-bold">멤버별 승패 <span class="text-xs font-normal text-stone-500">{{ rows|length }}명 · 게스트(<span class="text-emerald-600 font-bold">G</span>) 포함 · 열 이름을 누르면 정렬</span></h2>
+{% call card(cls='p-0 overflow-x-auto') %}
+{% macro th(key, label, cls='') -%}
+<th class="px-1 py-2 whitespace-nowrap {{ cls }}"><a href="?period={{ period }}&sort={{ key }}" class="{{ 'text-stone-900 font-bold underline underline-offset-2' if sort == key else '' }}">{{ label }}{{ ' ▼' if sort == key and key != 'name' else '' }}</a></th>
+{%- endmacro %}
+<table class="w-full text-[13px]">
+  <thead class="bg-stone-50 text-xs text-stone-500">
+    <tr>{{ th('name', '이름', 'text-left pl-2') }}{{ th('games', '경기') }}<th class="px-1 whitespace-nowrap">승-패</th>{{ th('winrate', '승률') }}<th class="px-1 whitespace-nowrap">최근5</th>{{ th('streak', '연승') }}{{ th('margin', '득실', 'pr-2') }}</tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="border-t border-stone-100">
+      <td class="py-2 pl-2 whitespace-nowrap"><span class="inline-flex items-center gap-1">{{ bn(r.member, 'inline-block min-w-[1.4rem] text-right') }}<span>{{ r.member.name }}</span>{% if r.member.is_guest %}<span class="text-[9px] font-bold text-emerald-600">G</span>{% endif %}</span></td>
+      <td class="px-1 text-center tabular-nums">{{ r.games }}</td>
+      <td class="px-1 text-center tabular-nums whitespace-nowrap">{{ r.wins }}-{{ r.losses }}{% if r.draws %}-{{ r.draws }}{% endif %}</td>
+      <td class="px-1 text-center tabular-nums font-bold">{{ (r.win_rate * 100)|round|int }}%</td>
+      <td class="px-1 text-center whitespace-nowrap text-[9px] tracking-[-0.05em]">
+        {% for x in r.last5 %}<span class="{{ 'text-emerald-500' if x == 'W' else 'text-stone-400' if x == 'L' else 'text-amber-500' }}">{{ '●' if x == 'W' else '○' if x == 'L' else '◐' }}</span>{% endfor %}
+      </td>
+      <td class="px-1 text-center tabular-nums whitespace-nowrap">{{ r.current_streak }}<span class="text-stone-400">/{{ r.best_streak }}</span></td>
+      <td class="px-1 pr-2 text-center tabular-nums {{ 'text-emerald-600' if r.avg_margin > 0 else 'text-red-600' if r.avg_margin < 0 else 'text-stone-500' }}">{{ '%+.1f'|format(r.avg_margin) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="py-6 text-center text-stone-400">결과가 입력된 경기가 없어요.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endcall %}
+<p class="text-[11px] text-stone-500 -mt-2">승-패(무승부 있으면 -무) · 최근5: ●승 ○패 ◐무 (왼쪽이 오래된 경기) · 연승: 현재/최장 · 득실: 내가 뛴 경기의 평균 점수차 (우리 팀 − 상대 팀)</p>
+
+{# ---------------- ② 경기별 결과 ---------------- #}
+<h2 class="font-bold pt-2">경기별 결과</h2>
+{% if summary.games %}
+{% call card() %}
+  <div class="grid grid-cols-3 gap-2 text-center">
+    <div class="rounded-lg bg-stone-50 py-2"><div class="text-[11px] text-stone-500">평균 점수차</div><div class="text-lg font-bold">{{ summary.avg_margin }}점</div></div>
+    <div class="rounded-lg bg-stone-50 py-2"><div class="text-[11px] text-stone-500">접전 (5점 이내)</div><div class="text-lg font-bold">{{ summary.close_pct }}%</div></div>
+    <div class="rounded-lg bg-stone-50 py-2"><div class="text-[11px] text-stone-500">일방적</div><div class="text-lg font-bold {{ 'text-red-600' if summary.lopsided_pct >= 30 }}">{{ summary.lopsided_pct }}%</div></div>
+  </div>
+  <p class="mt-2 text-xs text-stone-500 text-center">{{ summary.games }}게임 · {{ team_name('A') }} {{ summary.red_wins }}승 · {{ team_name('B') }} {{ summary.white_wins }}승
+    {% if summary.lopsided_pct >= 30 %}<br><span class="text-red-600">일방적인 경기가 많아요 — 밸런스 모드나 초기 등급 점검을 권장해요.</span>{% endif %}</p>
+{% endcall %}
+{% call card(cls='p-0') %}
+<ul class="divide-y divide-stone-100 text-sm">
+  {% for x in games %}{% set g = x.g %}
+  <li><a href="/admin/s/{{ x.s.id }}" class="flex items-center gap-2 px-3 py-2.5 active:bg-stone-50">
+    <span class="w-[5.5rem] shrink-0 text-xs text-stone-500 whitespace-nowrap">{{ fmt_date(x.s.date) }} · 게임{{ g.game_no }}</span>
+    <span class="flex-1 text-center whitespace-nowrap tabular-nums">
+      <span class="{{ 'font-black' if g.winner == 'A' else 'text-stone-500' }}">{{ g.score_a }}</span>
+      <span class="text-stone-400">:</span>
+      <span class="{{ 'font-black' if g.winner == 'B' else 'text-stone-500' }}">{{ g.score_b }}</span>
+      <span class="ml-1 text-[11px] text-stone-400">{{ x.n_a }}:{{ x.n_b }}명</span>
+    </span>
+    <span class="w-24 shrink-0 text-right text-xs whitespace-nowrap">
+      {% if x.lopsided %}<span class="rounded px-1 bg-red-100 text-red-700">⚠ 일방적</span>{% elif x.diff|abs <= 5 %}<span class="rounded px-1 bg-emerald-100 text-emerald-700">접전</span>{% else %}<span class="text-stone-400">{{ x.diff|abs }}점차</span>{% endif %}
+      {% if g.game_no == 2 %}<span class="block text-[10px] text-stone-400">{{ MODE_LABEL[g.lineup_mode] }}</span>{% endif %}
+    </span>
+  </a></li>
+  {% endfor %}
+</ul>
+{% endcall %}
+<p class="text-[11px] text-stone-500 -mt-2">왼쪽 점수가 {{ team_name('A') }}, 오른쪽이 {{ team_name('B') }}. 누르면 그날 경기 운영 화면으로 가요.</p>
+{% else %}
+{% call card() %}<p class="text-sm text-stone-400 text-center py-2">결과가 입력된 경기가 없어요.</p>{% endcall %}
+{% endif %}
+{% endblock %}

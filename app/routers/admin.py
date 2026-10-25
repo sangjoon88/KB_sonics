@@ -449,6 +449,21 @@ async def rating_setup_confirm(request: Request, db: Session = Depends(get_db), 
 
 # ---------------------------------------------------------------- 레이팅 / 설정 / 로그
 
+@router.get("/results")
+def results_page(request: Request, period: str = "season", sort: str = "winrate",
+                 db: Session = Depends(get_db), admin=Depends(admin_page)):
+    """운영진 전용 승패 분석: 멤버별 승패표(게스트 포함) + 경기별 결과."""
+    from app.config import settings as cfg
+    from app.services.stats import RESULT_SORTS, results_overview
+    period = period if period in ("season", "all") else "season"
+    sort = sort if sort in RESULT_SORTS else "winrate"
+    data = results_overview(db, cfg.SEASON if period == "season" else None)
+    rows = sorted(data["rows"], key=RESULT_SORTS[sort])
+    return render(request, "admin/results.html", {"rows": rows, "games": data["games"], "summary": data["summary"],
+                                                  "period": period, "sort": sort, "season": cfg.SEASON},
+                  member=admin, admin=admin)
+
+
 @router.get("/ratings")
 def ratings_page(request: Request, db: Session = Depends(get_db), admin=Depends(admin_page)):
     members = db.scalars(select(Member).where(Member.is_active.is_(True))).all()

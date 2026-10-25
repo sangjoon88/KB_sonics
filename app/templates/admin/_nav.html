@@ -1,5 +1,5 @@
 <div class="flex gap-2 overflow-x-auto text-sm -mx-4 px-4 pb-1">
-  {% for href, label in [('/admin','경기'),('/admin/members','멤버'),('/admin/rating-setup','초기 등급'),('/admin/ratings','레이팅'),('/admin/settings','설정'),('/admin/logs','작업 기록')] %}
+  {% for href, label in [('/admin','경기'),('/admin/members','멤버'),('/admin/rating-setup','초기 등급'),('/admin/ratings','레이팅'),('/admin/results','승패'),('/admin/settings','설정'),('/admin/logs','작업 기록')] %}
   <a href="{{ href }}" class="whitespace-nowrap rounded-full px-3 py-1.5 {{ 'bg-stone-800 text-white' if active == href else 'bg-white border border-stone-200' }}">{{ label }}</a>
   {% endfor %}
 </div>

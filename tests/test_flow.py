@@ -990,3 +990,42 @@ def test_my_results_visible_only_for_listed_members(client, db):
         assert "승률" not in me and "전적" not in me and "61" not in me
     finally:
         cfg.settings.SEASON = orig
+
+
+def test_admin_results_tab(client, db):
+    import datetime as _dt
+    from app.services.stats import results_overview
+    admin = _login_admin(client, db)
+    ms = [Member(name=f"승패{i}", position="GFC"[i % 3], height_cm=175 + i) for i in range(5)]
+    db.add_all(ms)
+    db.commit()
+    everyone = [admin, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, _dt.date(2026, 9, 6))
+    for m in everyone:
+        ops.set_checkin(db, admin, s, m.id, True)
+    guest = ops.add_guest(db, s, admin, "승패손님", grade=3, height=181, checked_in=True, by_admin=admin).member
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 50, 30)                  # 20점차 → 일방적
+    g2 = ops.create_game2(db, admin, s, "kept")
+    ops.submit_result(db, admin, g2, 41, 40)                  # 1점차 → 접전
+    db.expire_all()
+
+    data = results_overview(db, 2026)
+    by = {r.member.name: r for r in data["rows"]}
+    assert "승패손님" in by and by["승패손님"].games == 2                     # 게스트 포함
+    a_side = {r.member_id for r in g1.roster if r.side == "A"}
+    someone = next(m for m in everyone if m.id in a_side)
+    row = by[someone.name]
+    assert (row.wins, row.losses, row.games) == (2, 0, 2) and row.avg_margin == (20 + 1) / 2
+    assert row.current_streak == 2 and row.best_streak == 2 and row.last5 == ["W", "W"]
+    sm = data["summary"]
+    assert sm["games"] == 2 and sm["close_pct"] == 50 and sm["lopsided_pct"] == 50
+
+    page = client.get("/admin/results?period=season&sort=margin").text
+    assert "멤버별 승패" in page and "승패손님" in page and "일방적" in page and "접전" in page
+    assert "승패" in client.get("/admin").text                              # 메뉴 탭
+    assert client.get("/admin/results?period=all").status_code == 200
+    # 일반 멤버는 접근 불가
+    _login_as(client, db, ms[0])
+    assert client.get("/admin/results", follow_redirects=False).status_code == 303

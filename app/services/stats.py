@@ -162,3 +162,109 @@ def member_summary(db: Session, today: date) -> dict:
         "no_height": sum(1 for m in members if not m.height_cm),
         "unrated": sum(1 for m in members if m.initial_grade is None),
     }
+
+
+# ---------------------------------------------------------------- 운영진 전용: 승패 분석
+
+CLOSE_MARGIN = 5   # 이 점수차 이내면 '접전'
+
+
+@dataclass
+class ResultRow:
+    member: Member
+    games: int = 0
+    wins: int = 0
+    losses: int = 0
+    draws: int = 0
+    margin_sum: int = 0
+    seq: list[str] = field(default_factory=list)   # 'W'/'L'/'D' (오래된 → 최근)
+
+    @property
+    def win_rate(self) -> float:
+        return self.wins / self.games if self.games else 0.0
+
+    @property
+    def avg_margin(self) -> float:
+        return self.margin_sum / self.games if self.games else 0.0
+
+    @property
+    def last5(self) -> list[str]:
+        return self.seq[-5:]
+
+    @property
+    def current_streak(self) -> int:
+        n = 0
+        for r in reversed(self.seq):
+            if r != "W":
+                break
+            n += 1
+        return n
+
+    @property
+    def best_streak(self) -> int:
+        best = cur = 0
+        for r in self.seq:
+            cur = cur + 1 if r == "W" else 0
+            best = max(best, cur)
+        return best
+
+    @property
+    def back_number(self):   # bn 매크로용
+        return self.member.back_number
+
+
+def results_overview(db: Session, season: int | None) -> dict:
+    """멤버별 승패표(게스트 포함) + 경기별 결과 목록 + 요약. season=None 이면 전체 기간."""
+    from app.services import lopsided
+    q = select(ClubSession).options(selectinload(ClubSession.games).selectinload(Game.roster)
+                                    .selectinload(GameRoster.member)).order_by(ClubSession.date)
+    if season is not None:
+        q = q.where(extract("year", ClubSession.date) == season)
+    sessions = db.scalars(q).all()
+
+    rows: dict[int, ResultRow] = {}
+    games_out = []
+    for s in sessions:
+        for g in sorted(s.games, key=lambda g: g.game_no):
+            if g.status != "finished" or g.winner is None or g.score_a is None:
+                continue
+            diff = g.score_a - g.score_b
+            games_out.append({"s": s, "g": g, "diff": diff, "lopsided": lopsided.judge(g.score_a, g.score_b).lopsided,
+                              "n_a": sum(1 for r in g.roster if r.side == "A"),
+                              "n_b": sum(1 for r in g.roster if r.side == "B")})
+            for r in g.roster:
+                row = rows.setdefault(r.member_id, ResultRow(member=r.member))
+                row.games += 1
+                my = diff if r.side == "A" else -diff
+                row.margin_sum += my
+                if g.winner == "draw":
+                    row.draws += 1
+                    row.seq.append("D")
+                elif g.winner == r.side:
+                    row.wins += 1
+                    row.seq.append("W")
+                else:
+                    row.losses += 1
+                    row.seq.append("L")
+
+    n = len(games_out)
+    margins = [abs(x["diff"]) for x in games_out]
+    summary = {
+        "games": n,
+        "avg_margin": round(sum(margins) / n, 1) if n else None,
+        "close_pct": round(100 * sum(1 for m in margins if m <= CLOSE_MARGIN) / n) if n else None,
+        "lopsided_pct": round(100 * sum(1 for x in games_out if x["lopsided"]) / n) if n else None,
+        "red_wins": sum(1 for x in games_out if x["g"].winner == "A"),
+        "white_wins": sum(1 for x in games_out if x["g"].winner == "B"),
+    }
+    games_out.reverse()   # 최근 경기가 위
+    return {"rows": list(rows.values()), "games": games_out, "summary": summary}
+
+
+RESULT_SORTS = {
+    "winrate": lambda r: (-r.win_rate, -r.games, r.member.name),
+    "games": lambda r: (-r.games, -r.win_rate, r.member.name),
+    "margin": lambda r: (-r.avg_margin, -r.games, r.member.name),
+    "streak": lambda r: (-r.current_streak, -r.best_streak, r.member.name),
+    "name": lambda r: (r.member.name,),
+}
