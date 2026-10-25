@@ -6,7 +6,10 @@
   <h1 class="text-2xl font-bold">{% if me.back_number %}<span class="tabular-nums text-lg font-black text-stone-400 mr-1.5">No.{{ me.back_number }}</span>{% endif %}{{ me.name }} {{ pos_badges(me) }}</h1>
   <a href="/logout" class="text-xs text-stone-500 underline">로그아웃</a>
 </div>
-{% set tiles = [('출석', st.attended ~ '회'), ('출석률', ((st.attendance_rate*100)|round|int) ~ '%'), ('경기', st.games)] %}
+{% set tiles = [('출석', st.attended ~ '회'), ('출석률', ((st.attendance_rate*100)|round|int) ~ '%'), ('경기', st.games),
+               ('🔥 연속 출석', (eng.cur_streak ~ '회') if eng and eng.cur_streak else '-'),
+               ('최장 연속', (eng.best_streak ~ '회') if eng and eng.best_streak else '-'),
+               ('🐦 얼리버드', (eng.early_birds ~ '번') if eng and eng.early_birds else '-')] %}
 {% if show_results %}{% set tiles = tiles + [('승률', (((st.win_rate*100)|round|int) ~ '%') if st.games else '-'), ('전적', st.wins ~ '승 ' ~ st.losses ~ '패' ~ ((' ' ~ st.draws ~ '무') if st.draws else '')), ('최장 연승', st.best_streak)] %}{% endif %}
 <div class="grid grid-cols-3 gap-2">
   {% for label, value in tiles %}
@@ -16,6 +19,23 @@
   </div>
   {% endfor %}
 </div>
+{% if eng %}
+{% call card() %}
+  <div class="flex items-center justify-between">
+    <h2 class="font-bold">🏅 내 배지 <span class="text-sm font-normal text-stone-500">{{ eng.earned|length }}/{{ eng.badges()|length }}</span></h2>
+    {% if eng.month_progress %}<span class="text-xs {{ 'text-orange-600 font-semibold' if eng.month_progress[0] == eng.month_progress[1] else 'text-stone-500' }}">이번 달 {{ eng.month_progress[0] }}/{{ eng.month_progress[1] }} 출석{{ ' · 개근 도전 중!' if eng.month_progress[0] == eng.month_progress[1] }}</span>{% endif %}
+  </div>
+  <div class="mt-3 grid grid-cols-4 gap-2">
+    {% for b, got in eng.badges() %}
+    <div class="text-center rounded-lg py-2 {{ 'bg-orange-50' if got else 'bg-stone-50 opacity-40 grayscale' }}" title="{{ b.desc }}">
+      <div class="text-2xl leading-none">{{ b.emoji }}</div>
+      <div class="mt-1 text-[10px] leading-tight {{ 'font-semibold' if got }}">{{ b.title }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if eng.perfect_months %}<p class="mt-2 text-xs text-stone-500">📅 개근한 달: {% for y, mth in eng.perfect_months %}{{ mth }}월{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+{% endcall %}
+{% endif %}
 {% call card() %}
   <h2 class="font-bold mb-2">최근 경기</h2>
   <ul class="divide-y divide-stone-100">

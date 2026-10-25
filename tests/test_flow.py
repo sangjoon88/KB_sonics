@@ -1088,3 +1088,66 @@ def test_no_member_route_exposes_results(client, db):
             assert word not in body, f"{url} 에 '{word}' 노출"
         checked.append(url)
     assert len(checked) >= 15, checked                     # 화면·API 대부분을 실제로 열어봤는지
+
+
+def test_engagement_streak_perfect_month_earlybird_badges(client, db):
+    import datetime as _dt
+    from app.models import Attendance, ClubSession, Game, GameRoster
+    from app.services.engagement import compute_engagement
+    admin = _login_admin(client, db)
+    a, b, c = (Member(name=n, position="G", height_cm=178) for n in ("꾸준이", "가끔이", "새벽이"))
+    db.add_all([a, b, c])
+    db.commit()
+
+    def held(d, players):
+        s = ClubSession(date=d, status="finished")
+        db.add(s)
+        db.flush()
+        g = Game(session_id=s.id, game_no=1, lineup_mode="balanced", status="finished",
+                 score_a=10, score_b=8, winner="A")
+        db.add(g)
+        db.flush()
+        for i, m in enumerate(players):
+            db.add(GameRoster(game_id=g.id, member_id=m.id, side="A" if i % 2 == 0 else "B"))
+        db.commit()
+        return s
+
+    # 9월: 3번 열림 (꾸준이 개근, 가끔이 1번 빠짐) / 9월 27일은 경기 없음(연속 안 끊김) / 10월 2번
+    days = [_dt.date(2026, 9, 6), _dt.date(2026, 9, 13), _dt.date(2026, 9, 20), _dt.date(2026, 10, 4), _dt.date(2026, 10, 11)]
+    for d in days:
+        held(d, [a, c] if d == _dt.date(2026, 9, 13) else [a, b, c] if d.month == 9 else [a, c])
+    data = compute_engagement(db, 2026, _dt.date(2026, 10, 20))
+    ea, eb = data.by_member[a.id], data.by_member[b.id]
+    assert ea.cur_streak == 5 and ea.best_streak == 5                 # 경기 없는 주는 연속을 끊지 않음
+    assert eb.cur_streak == 0 and eb.best_streak == 1
+    assert (2026, 9) in ea.perfect_months and (2026, 9) not in eb.perfect_months
+    assert ea.month_progress == (2, 2)                                 # 10월은 '도전 중'
+    sept = next(mo for mo in data.months if mo.month == 9)
+    assert sept.done and {m.name for m in sept.members} == {"꾸준이", "새벽이"}
+    assert {"first", "s4", "perfect"} <= ea.earned and "s4" not in eb.earned
+
+    # 얼리버드: 처음 투표 기준 (나중에 바꿔도 유지), 대리 투표 제외
+    s = ops.create_session(db, admin, _dt.date(2099, 1, 3))
+    ops.proxy_vote(db, admin, s, b.id, "yes")                          # 대리 투표가 제일 먼저 → 제외
+    ops.vote(db, s, c, "yes")                                          # 본인 투표 1등
+    ops.vote(db, s, a, "yes")
+    ops.vote(db, s, c, "no")                                           # c가 투표를 바꿔도 처음 시각 유지
+    db.expire_all()
+    data = compute_engagement(db, 2099, _dt.date(2099, 1, 1))
+    assert data.early_bird_of[s.id].name == "새벽이"
+    assert data.by_member[c.id].early_birds == 1 and "eb1" in data.by_member[c.id].earned
+
+    # 화면: 홈 랭킹·기록 탭·내 기록 배지
+    import app.config as cfg
+    orig = cfg.settings.SEASON
+    cfg.settings.SEASON = 2026
+    try:
+        _login_as(client, db, a)
+        home = client.get("/").text
+        assert "🔥 연속 출석" in home and "🐦 얼리버드" in home
+        st = client.get("/stats?sort=attstreak").text
+        assert "꾸준이" in st and "월간 개근상" in st and "도전 중" in st
+        me = client.get("/me").text
+        assert "내 배지" in me and "개근상" in me and "9월" in me
+    finally:
+        cfg.settings.SEASON = orig

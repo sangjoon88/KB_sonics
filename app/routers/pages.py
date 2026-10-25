@@ -13,6 +13,7 @@ from app.models import ClubSession, Game, Member
 from app.routers.common import redirect, render
 from app.services import arcade, ops
 from app.services.balancer import balance_label
+from app.services.engagement import compute_engagement, top_early_birds, top_streaks
 from app.services.stats import compute_stats, leaderboard, member_summary, winrate_min_games
 from app.timeutil import today_kst
 
@@ -82,6 +83,11 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
         "show_results": ops.results_public(db),
         "member_summary": member_summary(db, today_kst()),
     })
+    eng = compute_engagement(db, settings.SEASON, today_kst())
+    all_members = {m.id: m for m in db.scalars(select(Member)).all()}
+    ctx.update({"my_eng": eng.by_member.get(me.id),
+                "top_attstreak": top_streaks(eng, all_members), "top_earlybird": top_early_birds(eng, all_members),
+                "early_bird": eng.early_bird_of.get(s.id) if s else None})
     week = arcade.leaderboard(db, *arcade.week_range())
     ctx["arcade_top"] = [r for r in week if r.rank == 1]
     ctx["arcade_me"] = arcade.find(week, me.id)
@@ -530,11 +536,20 @@ def stats_page(request: Request, sort: str = "attendance", season: int | None = 
                db: Session = Depends(get_db), me=Depends(current_member), admin=Depends(current_admin)):
     season = season or settings.SEASON
     show = ops.results_public(db)
-    if not show and sort not in ("attendance", "games"):
+    if not show and sort not in ("attendance", "games", "attstreak", "earlybird"):
         sort = "attendance"          # 결과 비공개: 승률·연승 순위는 없다
     stats = compute_stats(db, season)
-    rows = leaderboard(stats, sort)
+    eng = compute_engagement(db, season, today_kst())
+    if sort == "attstreak":          # 🔥 지금 이어지는 연속 출석
+        rows = sorted([r for r in stats.values() if eng.by_member.get(r.member_id) and eng.by_member[r.member_id].cur_streak],
+                      key=lambda r: (-eng.by_member[r.member_id].cur_streak, -eng.by_member[r.member_id].best_streak, r.name))
+    elif sort == "earlybird":        # 🐦 이번 시즌 얼리버드 횟수
+        rows = sorted([r for r in stats.values() if eng.by_member.get(r.member_id) and eng.by_member[r.member_id].early_birds],
+                      key=lambda r: (-eng.by_member[r.member_id].early_birds, r.name))
+    else:
+        rows = leaderboard(stats, sort)
     return render(request, "stats.html", {"rows": rows, "sort": sort, "season": season, "show_results": show,
+                                          "eng": eng.by_member, "months": eng.months,
                                           "min_games": winrate_min_games(next(iter(stats.values())).season_games if stats else 0)},
                   member=me, admin=admin)
 
@@ -547,7 +562,9 @@ def my_page(request: Request, db: Session = Depends(get_db), me=Depends(current_
     if (gate := _gate(me, "/me")) is not None:
         return gate
     st = compute_stats(db, settings.SEASON).get(me.id)
-    return render(request, "me.html", {"st": st, "show_results": ops.my_results_visible(db, me)}, member=me, admin=admin)
+    eng = compute_engagement(db, settings.SEASON, today_kst()).by_member.get(me.id)
+    return render(request, "me.html", {"st": st, "eng": eng, "show_results": ops.my_results_visible(db, me)},
+                  member=me, admin=admin)
 
 
 # ---------------------------------------------------------------- 최초 세팅

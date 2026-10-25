@@ -3,8 +3,8 @@
 {% block title %}{{ season }} 기록{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold">{{ season }} 시즌 기록</h1>
-{% set tabs = [('attendance','출석왕'),('winrate','승률'),('streak','연승'),('games','경기 수')] if show_results else [('attendance','출석왕'),('games','경기 수')] %}
-<div class="grid {{ 'grid-cols-4' if show_results else 'grid-cols-2' }} gap-1 bg-stone-200 rounded-lg p-1 text-sm">
+{% set tabs = [('attendance','출석왕'),('winrate','승률'),('streak','연승'),('games','경기 수')] if show_results else [('attendance','출석왕'),('games','경기 수'),('attstreak','🔥 연속'),('earlybird','🐦 얼리버드')] %}
+<div class="grid grid-cols-4 gap-1 bg-stone-200 rounded-lg p-1 text-sm">
   {% for key, label in tabs %}
   <a href="?sort={{ key }}" class="text-center rounded-md py-2 {{ 'bg-white font-bold shadow-sm' if sort == key else 'text-stone-600' }}">{{ label }}</a>
   {% endfor %}
@@ -12,7 +12,7 @@
 {% call card(cls='p-0 overflow-hidden') %}
 <table class="w-full text-sm">
   <thead class="bg-stone-50 text-stone-500 text-xs whitespace-nowrap">
-    <tr><th class="py-2 w-10">순위</th><th class="text-left">이름</th><th>출석</th><th>경기</th>{% if show_results %}<th>승률</th><th>최장 연승</th>{% endif %}</tr>
+    <tr><th class="py-2 w-10">순위</th><th class="text-left">이름</th><th>출석</th><th>경기</th>{% if show_results %}<th>승률</th><th>최장 연승</th>{% else %}<th>🔥 연속</th><th>🐦</th>{% endif %}</tr>
   </thead>
   <tbody>
   {% for r in rows %}
@@ -21,17 +21,39 @@
       <td class="font-medium whitespace-nowrap"><span class="inline-flex items-center gap-1.5">{{ bn(r) }}<span>{{ r.name }}</span></span></td>
       <td class="text-center {{ 'font-bold' if sort == 'attendance' }}">{{ r.attended }}<span class="ml-1 text-[10px] font-normal text-stone-400">{{ (r.attendance_rate*100)|round|int }}%</span></td>
       <td class="text-center {{ 'font-bold' if sort == 'games' }}">{{ r.games }}</td>
+      {% set e = eng.get(r.member_id) %}
+      {% if not show_results %}
+      <td class="text-center {{ 'font-bold' if sort == 'attstreak' }}">{{ e.cur_streak if e and e.cur_streak else '-' }}{% if e and e.best_streak and e.best_streak > e.cur_streak %}<span class="ml-1 text-[10px] font-normal text-stone-400">최장 {{ e.best_streak }}</span>{% endif %}</td>
+      <td class="text-center {{ 'font-bold' if sort == 'earlybird' }}">{{ e.early_birds if e and e.early_birds else '-' }}</td>
+      {% endif %}
       {% if show_results %}
       <td class="text-center {{ 'font-bold' if sort == 'winrate' }}">{% if r.games %}{{ (r.win_rate*100)|round|int }}%{% else %}-{% endif %}</td>
       <td class="text-center {{ 'font-bold' if sort == 'streak' }}">{{ r.best_streak }}{% if r.current_streak >= 2 %} <span class="text-[10px] text-orange-600">🔥{{ r.current_streak }}</span>{% endif %}</td>
       {% endif %}
     </tr>
   {% else %}
-    <tr><td colspan="{{ 6 if show_results else 4 }}" class="py-6 text-center text-stone-400">아직 기록이 없습니다.</td></tr>
+    <tr><td colspan="6" class="py-6 text-center text-stone-400">{{ '연속 출석 중인 사람이 아직 없어요.' if sort == 'attstreak' else '아직 얼리버드가 없어요. 투표가 열리면 가장 먼저 투표해 보세요!' if sort == 'earlybird' else '아직 기록이 없습니다.' }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
 {% endcall %}
+{# ---- 월간 개근상 ---- #}
+{% if months %}
+{% call card() %}
+  <div class="font-bold">📅 월간 개근상</div>
+  <ul class="mt-2 space-y-2 text-sm">
+    {% for mo in months %}
+    <li>
+      <div class="text-xs text-stone-500">{{ mo.month }}월 · 경기 {{ mo.held }}번{% if not mo.done %} · <span class="text-orange-600 font-semibold">도전 중</span>{% endif %}</div>
+      <div class="mt-0.5 flex flex-wrap gap-1">
+        {% for m in mo.members %}<span class="rounded px-2 py-0.5 {{ 'bg-orange-100 text-orange-800 font-semibold' if me and m.id == me.id else 'bg-stone-100' }}">{{ m.name }}</span>{% else %}<span class="text-xs text-stone-400">해당자 없음</span>{% endfor %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+{% endcall %}
+{% endif %}
 <p class="text-xs text-stone-500">출석은 그날 경기를 1게임 이상 실제로 뛴 경우에만 셉니다. (투표만 하고 못 온 날은 제외)
+<br>🔥 연속 출석은 경기가 열린 날 기준 (경기 없는 주는 끊기지 않아요) · 🐦 얼리버드는 그 경기에 가장 먼저 투표한 사람 · 개근상은 경기가 2번 이상 열린 달에 모두 나온 사람
 {% if show_results and sort == 'winrate' %}<br>승률은 이번 시즌 경기의 30% 이상 뛴 멤버만 순위에 나와요. (지금 기준: {{ min_games }}경기 이상){% endif %}</p>
 {% endblock %}
