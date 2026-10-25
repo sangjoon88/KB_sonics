@@ -547,7 +547,7 @@ def my_page(request: Request, db: Session = Depends(get_db), me=Depends(current_
     if (gate := _gate(me, "/me")) is not None:
         return gate
     st = compute_stats(db, settings.SEASON).get(me.id)
-    return render(request, "me.html", {"st": st, "show_results": ops.results_public(db)}, member=me, admin=admin)
+    return render(request, "me.html", {"st": st, "show_results": ops.my_results_visible(db, me)}, member=me, admin=admin)
 
 
 # ---------------------------------------------------------------- 최초 세팅

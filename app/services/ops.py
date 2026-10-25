@@ -48,6 +48,12 @@ def balance_mode(db: Session) -> str:
 
 
 RESULTS_PUBLIC = False   # 경기 과열 방지: 멤버 화면에 점수·승패·승률·연승 비공개. 다시 공개하려면 True 로.
+# 예외: 이 멤버들은 '내 기록' 탭에서만 본인 승률·전적·최장 연승·최근 경기 승패/점수를 본다 (이름으로 지정)
+RESULTS_ME_NAMES = {"이상준", "이원섭"}
+
+
+def my_results_visible(db: Session, member: Member) -> bool:
+    return results_public(db) or member.name in RESULTS_ME_NAMES
 
 
 def results_public(db: Session) -> bool:

@@ -959,3 +959,34 @@ def test_finished_session_leaves_home(client, db):
     nxt = ops.create_session(db, admin, today_kst() + _dt.timedelta(days=7))
     db.expire_all()
     assert ops.upcoming_session(db, today_kst()).id == nxt.id
+
+
+def test_my_results_visible_only_for_listed_members(client, db):
+    import datetime as _dt
+    admin = Member(name="이상준", is_admin=True, is_owner=True, pin_hash=hash_pin("1234"),
+                   position="G", height_cm=180)
+    other = Member(name="일반인", position="F", height_cm=178)
+    ms = [Member(name=f"상대{i}", position="GFC"[i % 3], height_cm=175) for i in range(4)]
+    db.add_all([admin, other, *ms])
+    db.commit()
+    everyone = [admin, other, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, _dt.date(2099, 12, 6))
+    for m in everyone:
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 61, 47)
+    db.expire_all()
+    import app.config as cfg
+    orig = cfg.settings.SEASON
+    cfg.settings.SEASON = 2099
+    try:
+        _login_as(client, db, admin)                 # 목록에 있는 사람: 내 기록에 승률·전적·최장 연승·점수
+        me = client.get("/me").text
+        assert "승률" in me and "전적" in me and "최장 연승" in me and ("61:47" in me or "47:61" in me)
+        assert "승률" not in client.get("/stats").text and "승률" not in client.get("/").text   # 다른 화면은 그대로 숨김
+        _login_as(client, db, other)                 # 그 외: 숨김
+        me = client.get("/me").text
+        assert "승률" not in me and "전적" not in me and "61" not in me
+    finally:
+        cfg.settings.SEASON = orig
