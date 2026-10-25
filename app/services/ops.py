@@ -335,9 +335,9 @@ def update_session_info(db: Session, admin: Member, s: ClubSession, *, start_tim
 
 
 def upcoming_session(db: Session, today: date) -> ClubSession | None:
-    s = db.scalar(select(ClubSession).where(ClubSession.date >= today, ClubSession.status != "finished")
-                  .order_by(ClubSession.date).limit(1))
-    return s or db.scalar(select(ClubSession).order_by(ClubSession.date.desc()).limit(1))
+    """오늘 이후(오늘 포함) 아직 종료되지 않은 가장 가까운 경기. 없으면 None (끝난 경기는 '지난 경기'로)."""
+    return db.scalar(select(ClubSession).where(ClubSession.date >= today, ClubSession.status != "finished")
+                     .order_by(ClubSession.date).limit(1))
 
 
 def voting_open(s: ClubSession) -> bool:
@@ -839,6 +839,8 @@ def submit_result(db: Session, admin: Member, game: Game, score_a: int, score_b:
     if game.game_no == 1:
         judged = lopsided.judge(score_a, score_b)
         game.lopsided = judged.lopsided
+    if game.game_no == 2 and game.session.status != "finished":
+        game.session.status = "finished"   # 하루 2게임: 게임 2 결과가 들어오면 그날 경기 종료 (홈에서 내려감)
     db.flush()
 
     later_rated = any(g.rated and g.game_no > game.game_no for g in game.session.games)

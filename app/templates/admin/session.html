@@ -36,6 +36,19 @@
 
   <a href="/admin/s/{{ s.id }}/game/2/score" class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4 {{ 'opacity-50 pointer-events-none' if not g2 }}">
     <span><b>5. 게임 2 점수</b><div class="text-xs text-stone-500">{% if g2 and g2.status == 'finished' %}{{ g2.score_a }} : {{ g2.score_b }} (탭하여 수정){% else %}경기 후 입력{% endif %}</div></span><span>›</span></a>
+
+  {% if s.status == 'finished' %}
+  <div class="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4">
+    <span><b>6. 🏁 오늘 경기 종료됨</b><div class="text-xs text-stone-500">홈에서 내려가고 '지난 경기'로 옮겨졌어요</div></span>
+  </div>
+  {% else %}
+  <form method="post" action="/admin/s/{{ s.id }}/status" onsubmit="return confirm('오늘 경기를 마칠까요? 홈에서 내려가고 지난 경기로 옮겨져요.')">
+    <input type="hidden" name="status" value="finished">
+    <button class="w-full flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-4 text-left">
+      <span><b>6. 🏁 오늘 경기 마치기</b><div class="text-xs text-stone-500">게임 2 점수를 넣으면 자동으로 마쳐져요 · 1게임만 한 날은 여기서</div></span><span>›</span>
+    </button>
+  </form>
+  {% endif %}
 </div>
 
 <a href="/s/{{ s.id }}/day" class="block {{ btn_cls('ghost') }}">오늘 경기 화면 (멤버용)</a>

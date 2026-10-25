@@ -925,3 +925,37 @@ def test_member_roster_popup(client, db):
     assert r.status_code == 200 and "명단1" in r.text and "손님X" not in r.text and "180" not in r.text
     client.cookies.clear()
     assert client.get("/members/roster").status_code == 403
+
+
+def test_finished_session_leaves_home(client, db):
+    import datetime as _dt
+    from app.timeutil import today_kst
+    admin = _login_admin(client, db)
+    ms = [Member(name=f"종료{i}", position="GFC"[i % 3], height_cm=175 + i) for i in range(5)]
+    db.add_all(ms)
+    db.commit()
+    everyone = [admin, *ms]
+    ops.confirm_grades(db, admin, {m.id: 3.0 for m in everyone})
+    s = ops.create_session(db, admin, today_kst())
+    for m in everyone:
+        ops.vote(db, s, m, "yes")
+    for m in everyone:                       # 경기 당일 출석 체크를 시작하면 투표는 닫힌다
+        ops.set_checkin(db, admin, s, m.id, True)
+    g1 = ops.generate_game1(db, admin, s)
+    ops.submit_result(db, admin, g1, 30, 28)
+    assert s.status != "finished"
+    db.expire_all()
+    assert "팀이 나왔어요" in client.get("/").text
+    g2 = ops.create_game2(db, admin, s, "kept")
+    ops.submit_result(db, admin, g2, 25, 27)
+    db.refresh(s)
+    assert s.status == "finished"                                   # 게임 2 점수 → 자동 종료
+    db.expire_all()
+    home = client.get("/").text
+    assert "팀이 나왔어요" not in home and "다음 경기가 아직 등록되지 않았어요" in home
+    assert "지난 경기" in home                                       # 끝난 경기는 지난 경기 카드로
+    assert "오늘 경기 종료됨" in client.get(f"/admin/s/{s.id}").text
+    # 다음 경기를 등록하면 그 경기가 홈에
+    nxt = ops.create_session(db, admin, today_kst() + _dt.timedelta(days=7))
+    db.expire_all()
+    assert ops.upcoming_session(db, today_kst()).id == nxt.id
