@@ -8,14 +8,16 @@
     <button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/next" hx-target="#board" class="{{ btn_cls('ghost') }} !py-2 text-sm">🔀 다시 섞기 ({{ game.candidate_idx + 1 }}/{{ game.candidates|length }})</button>
     {% endif %}
   </div>
-  {% if editable %}<p class="text-xs text-stone-500">선수를 탭하면 반대 팀으로 이동합니다.{% if can_remove %} 게임 2를 못 뛰는 사람은 ✕로 빼세요{{ ' (남은 인원으로 자동 재편성)' if game.lineup_mode == 'reshuffled' }}.{% endif %}</p>{% endif %}
+  {% if editable %}<p class="text-xs text-stone-500">선수를 탭하거나, 꾹 눌러 반대 팀으로 끌어다 놓으면 이동해요.{% if can_remove %} 게임 2를 못 뛰는 사람은 ✕로 빼세요{{ ' (남은 인원으로 자동 재편성)' if game.lineup_mode == 'reshuffled' }}.{% endif %}</p>{% endif %}
   <div class="grid grid-cols-2 gap-3">
     {% for side, members, color in [('A', team_a, 'red'), ('B', team_b, 'slate')] %}
     <div class="bg-white rounded-xl border border-stone-200 p-2">
       <div class="text-sm font-bold px-1 mb-1">{{ team_name(side) }} <span class="text-stone-400 font-normal">{{ members|length }}명</span></div>
-      <div class="space-y-1.5">
+      {# 드래그 영역: 다른 팀 칸으로 끌어다 놓으면 이동 (빈 팀이어도 놓을 수 있게 최소 높이) #}
+      <div class="space-y-1.5 min-h-[3rem] {{ 'kb-team-list' if editable }}" data-side="{{ side }}"
+           data-move-url="/admin/s/{{ s.id }}/game/{{ no }}/move/">
       {% for m in members %}
-        <div class="flex items-stretch gap-1">
+        <div class="flex items-stretch gap-1" data-mid="{{ m.id }}">
         <button {% if editable %}hx-post="/admin/s/{{ s.id }}/game/{{ no }}/move/{{ m.id }}" hx-target="#board"{% else %}disabled{% endif %}
                 class="relative min-w-0 flex-1 text-left text-sm bg-{{ color }}-50 rounded-lg px-2 py-1.5 active:bg-{{ color }}-200 {{ 'ring-2 ring-emerald-400' if moved and m.id in moved }}">
           {# 1줄: 포지션 + 이름 (이름이 폭을 우선 차지) / 2줄: 키·조퇴·게스트 #}
@@ -32,7 +34,7 @@
         <button hx-post="/admin/s/{{ s.id }}/game/{{ no }}/remove/{{ m.id }}" hx-target="#board"
                 hx-confirm="{{ m.name }} 님을 게임 2 명단에서 뺄까요?{{ ' 남은 인원으로 팀을 다시 맞춥니다.' if game.lineup_mode == 'reshuffled' }}"
                 aria-label="{{ m.name }} 빼기"
-                class="shrink-0 w-7 rounded-lg text-stone-400 text-xs active:bg-stone-100">✕</button>
+                class="kb-no-drag shrink-0 w-7 rounded-lg text-stone-400 text-xs active:bg-stone-100">✕</button>
         {% endif %}
         </div>
       {% endfor %}

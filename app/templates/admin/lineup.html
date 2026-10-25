@@ -22,4 +22,28 @@
 <div id="board">
 {% if game %}{% include "admin/_lineup_board.html" %}{% endif %}
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+  // 팀 칸 사이 드래그 이동 (짧게 탭 = 기존 탭 이동, 꾹 눌러 끌기 = 드래그). 판이 새로 그려질 때마다 다시 연결
+  htmx.onLoad(function (root) {
+    if (!window.Sortable) return;
+    var lists = root.matches && root.matches('.kb-team-list') ? [root] : [];
+    lists = lists.concat(Array.prototype.slice.call(root.querySelectorAll ? root.querySelectorAll('.kb-team-list') : []));
+    lists.forEach(function (el) {
+      if (el._kbSortable) return;
+      el._kbSortable = Sortable.create(el, {
+        group: 'kb-lineup', sort: false, animation: 150,
+        forceFallback: true, fallbackTolerance: 4,          // 터치·마우스 모두 같은 방식으로
+        delay: 180, delayOnTouchOnly: true,                 // 폰: 살짝 길게 눌러야 드래그 (짧은 탭은 이동 버튼)
+        filter: '.kb-no-drag', preventOnFilter: false,
+        ghostClass: 'opacity-40', chosenClass: 'ring-2',
+        onAdd: function (evt) {
+          var mid = evt.item.getAttribute('data-mid');
+          if (!mid) return;
+          htmx.ajax('POST', evt.to.getAttribute('data-move-url') + mid, { target: '#board', swap: 'innerHTML' });
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
