@@ -197,6 +197,25 @@
     };
   })();
 
+  // ---------------------------------------------------------------- 진동
+  // 안드로이드: navigator.vibrate. 아이폰(사파리)은 vibrate 가 없어서, iOS 18+ 의 스위치 체크박스를
+  // 누를 때 나는 햅틱을 빌려 쓴다 — 화면을 만진 그 순간에만 되므로 슛을 놓을 때(tap)만 울린다.
+  const HAPTIC = (() => {
+    const canVibrate = typeof navigator.vibrate === 'function';
+    const vib = p => { try { navigator.vibrate(p); } catch (e) { /* 무시 */ } };
+    function iosTap() {
+      const label = document.createElement('label'), input = document.createElement('input');
+      label.setAttribute('aria-hidden', 'true'); label.style.display = 'none';
+      input.type = 'checkbox'; input.setAttribute('switch', '');
+      label.appendChild(input); document.head.appendChild(label);
+      try { label.click(); } finally { label.remove(); }
+    }
+    return {
+      tap: () => (canVibrate ? vib(8) : iosTap()),      // 손을 뗀 순간 (사용자 입력 안에서 호출)
+      buzz: p => { if (canVibrate) vib(p); },            // 골·머니볼 (안드로이드만)
+    };
+  })();
+
   // ---------------------------------------------------------------- 상태
   const S = {
     phase: 'idle', t0: 0, countT: 0, score: 0, made: 0, money: 0,
@@ -257,6 +276,7 @@
     } else { S.streak = 0; S.fire = false; S.swishRun = 0; }
     S.ballInSpot++; S.lastRelease = now; S.armsUp = 0.28;
     SND.release();
+    HAPTIC.tap();
     spawnBall(res, deep ? 2 : money ? 1 : 0, idx, made, bonus);
     if (S.ballInSpot < ballsAt(S.spot)) newTarget();
   }
@@ -303,7 +323,7 @@
     if (swish) SND.swish(); else SND.net();
     if (b.kind) { SND.money(); S.shake = 0.3; }
     if (b.buzzer) { float('BUZZER BEATER!', C.gold, 7); SND.cheer(true); S.shake = 0.45; }
-    if (navigator.vibrate) { try { navigator.vibrate(b.kind || b.buzzer ? [20, 40, 20] : 15); } catch (e) { /* 무시 */ } }
+    HAPTIC.buzz(b.kind || b.buzzer ? [20, 40, 20] : 15);
   }
   function float(str, color, size = 6) {
     const stack = S.floats.filter(f => f.t < 0.5).length;
