@@ -84,6 +84,9 @@
       <div class="font-bold">아직 없어요 — 첫 슛왕에 도전!</div>
       {% endif %}
       {% if arcade_me %}<div class="text-[11px] text-stone-500">내 최고 {{ arcade_me.score }}점 · {{ arcade_me.rank }}위</div>{% endif %}
+      {% if arcade_ch and arcade_ch.incoming %}{% set c0 = arcade_ch.incoming[0] %}<div class="text-[11px] font-semibold text-orange-700">⚔️ {{ c0.sender.name }}님의 도전장: {{ c0.target }}점을 넘겨보세요{% if arcade_ch.incoming|length > 1 %} 외 {{ arcade_ch.incoming|length - 1 }}개{% endif %}</div>{% endif %}
+      {% set beaten = arcade_ch.outgoing|selectattr('beaten_at')|list if arcade_ch else [] %}
+      {% if beaten %}<div class="text-[11px] text-stone-600">⚔️ {{ beaten[0].receiver.name }}님이 내 도전장을 깼어요 ({{ beaten[0].beaten_score }}점)</div>{% endif %}
     </div>
     <span class="shrink-0 rounded-lg bg-orange-600 text-white text-sm font-bold px-3 py-2">도전 ›</span>
   </div>

@@ -1,0 +1,17 @@
+{% from "_macros.html" import bn %}
+<div class="p-4 space-y-3 text-sm">
+  {% if done %}
+  <p class="font-semibold">⚔️ {{ to.name }}님에게 도전장을 보냈어요!</p>
+  <p class="text-stone-600">{{ to.name }}님이 7일 안에 <b class="text-orange-600">{{ target }}점</b>을 넘기면 도전장이 깨져요.</p>
+  {% elif error %}
+  <p class="rounded-lg bg-red-50 border border-red-200 text-red-800 px-3 py-2">{{ error }}</p>
+  {% else %}
+  <p class="font-bold text-base inline-flex items-center gap-1">⚔️ {{ bn(to) }}{{ to.name }}님에게 도전장</p>
+  <p class="text-stone-600">내 시즌 최고 <b class="text-orange-600">{{ target }}점</b>을 7일 안에 넘겨보라고 보낼까요?<br>
+    <span class="text-xs text-stone-500">{{ to.name }}님의 게임 화면에 도전장이 보여요.</span></p>
+  <button type="button" hx-post="/arcade/challenges" hx-vals='{"to_id": {{ to.id }}}' hx-target="#kb-dialog-body"
+          class="w-full rounded-xl bg-orange-600 text-white font-bold py-3 active:opacity-80">도전장 보내기</button>
+  {% endif %}
+  <button type="button" onclick="document.getElementById('kb-dialog').close()"
+          class="w-full rounded-xl border border-stone-300 py-2.5 text-stone-600">{{ '닫기' if done or error else '취소' }}</button>
+</div>

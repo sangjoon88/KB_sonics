@@ -1,0 +1,29 @@
+{% from "_macros.html" import bn %}
+<div id="challenges" hx-get="/arcade/challenges" hx-trigger="arcadeChanged from:body" hx-swap="outerHTML"
+     class="{{ '' if ch.incoming or ch.outgoing else 'hidden' }}">
+  <section class="bg-white rounded-xl shadow-sm border border-stone-200 px-4 py-3 text-sm">
+    <div class="font-bold">⚔️ 도전장</div>
+    {% if ch.incoming %}
+    <ul class="mt-2 space-y-1.5">
+      {% for c in ch.incoming %}
+      <li class="flex items-center justify-between gap-2">
+        <span class="inline-flex items-center gap-1 min-w-0">{{ bn(c.sender) }}<b class="truncate">{{ c.sender.name }}</b><span class="shrink-0">님의 <b class="text-orange-600 tabular-nums">{{ c.target }}점</b>을 넘겨보세요</span></span>
+        <span class="text-[11px] text-stone-500 shrink-0">D-{{ ch.days_left(c) }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if ch.outgoing %}
+    <div class="mt-2 text-[11px] text-stone-500">보낸 도전장</div>
+    <ul class="mt-1 space-y-1 text-xs">
+      {% for c in ch.outgoing %}
+      <li class="flex justify-between gap-2">
+        <span class="truncate">{{ c.receiver.name }} · 내 {{ c.target }}점</span>
+        {% if c.beaten_at %}<span class="shrink-0 font-semibold text-orange-700">깨졌어요! {{ c.beaten_score }}점</span>
+        {% else %}<span class="shrink-0 text-stone-500">도전 중 · D-{{ ch.days_left(c) }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</div>

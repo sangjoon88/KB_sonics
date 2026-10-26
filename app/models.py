@@ -183,6 +183,23 @@ class ArcadeRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     score: Mapped[int | None] = mapped_column(Integer)
     made: Mapped[int | None] = mapped_column(Integer)      # 성공한 공 수 (머니볼 포함)
+    detail: Mapped[dict | None] = mapped_column(JSON)      # {"shots": "SMRX-…" 26칸, "ev": [[ms, 누적점수], …]}
 
     member: Mapped[Member] = relationship()
+
+
+class ArcadeChallenge(Base):
+    """미니게임 도전장: from 이 자기 시즌 최고 점수(target)를 to 에게 깨보라고 보낸다."""
+    __tablename__ = "arcade_challenges"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from_id: Mapped[int] = mapped_column(ForeignKey("members.id"), index=True)
+    to_id: Mapped[int] = mapped_column(ForeignKey("members.id"), index=True)
+    target: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_kst)
+    beaten_at: Mapped[datetime | None] = mapped_column(DateTime)
+    beaten_score: Mapped[int | None] = mapped_column(Integer)
+
+    sender: Mapped[Member] = relationship(foreign_keys=[from_id])
+    receiver: Mapped[Member] = relationship(foreign_keys=[to_id])
 

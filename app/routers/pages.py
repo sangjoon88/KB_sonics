@@ -91,6 +91,7 @@ def home(request: Request, db: Session = Depends(get_db), me=Depends(current_mem
     week = arcade.leaderboard(db, *arcade.week_range())
     ctx["arcade_top"] = [r for r in week if r.rank == 1]
     ctx["arcade_me"] = arcade.find(week, me.id)
+    ctx["arcade_ch"] = arcade.challenges(db, me)
     return render(request, "home.html", ctx, member=me, admin=admin)
 
 

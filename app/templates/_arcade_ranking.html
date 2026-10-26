@@ -1,5 +1,19 @@
 {% from "_macros.html" import card, bn %}
 {% set tab = tab or 'week' %}
+{% macro rank_row(r, cls='') -%}
+<li class="flex items-center gap-2 py-2 text-sm {{ cls }} {{ 'bg-orange-50 -mx-2 px-2 rounded-lg font-bold' if me and r.member.id == me.id }}">
+  <span class="w-6 text-center shrink-0">{{ {1: '🥇', 2: '🥈', 3: '🥉'}.get(r.rank, r.rank) }}</span>
+  {{ bn(r.member) }}<span class="truncate flex-1">{{ r.member.name }}</span>
+  <span class="tabular-nums font-bold text-orange-600">{{ r.score }}<span class="text-[10px] font-normal text-stone-400">점</span></span>
+  {% if me and r.member.id != me.id and not r.member.is_guest %}
+  {% if r.member.id in sent_to %}<span class="w-7 shrink-0 text-center text-[10px] text-stone-400" title="도전장 보냄">보냄</span>
+  {% else %}<button type="button" hx-get="/arcade/challenge/{{ r.member.id }}" hx-target="#kb-dialog-body"
+          class="w-7 h-7 shrink-0 rounded-md border border-stone-200 text-xs active:bg-stone-100" title="{{ r.member.name }}님에게 도전장" aria-label="{{ r.member.name }}님에게 도전장">⚔️</button>{% endif %}
+  {% elif me %}<span class="w-7 shrink-0"></span>{% endif %}
+</li>
+{%- endmacro %}
+<div id="ranking-inner" hx-get="/arcade/ranking" hx-trigger="arcadeChanged from:body" hx-target="#ranking" hx-swap="innerHTML"
+     hx-vals='js:{tab: window.arcadeCurTab ? arcadeCurTab() : "week"}'>
 {% call card() %}
   <div class="flex items-center justify-between">
     <div class="font-bold">🏆 랭킹</div>
@@ -12,29 +26,22 @@
     </div>
   </div>
   {% for key, rows, mine in [('week', week_rows, my_week), ('season', season_rows, my_season)] %}
-  <div data-panel="{{ key }}" class="{{ '' if tab == key else 'hidden' }}">
-    {% if key == 'week' %}<p class="mt-1 text-[11px] text-stone-500">월~일 최고 점수 · 일요일 경기 날이 마지막 날이에요</p>
-    {% else %}<p class="mt-1 text-[11px] text-stone-500">시즌 최고 점수 (만점 {{ max_score }}점)</p>{% endif %}
+  <div data-panel="{{ key }}" class="rank-panel {{ '' if tab == key else 'hidden' }}">
+    {% if key == 'week' %}<p class="mt-1 text-[11px] text-stone-500">월~일 최고 점수 · 일요일 경기 날이 마지막 날이에요{% if me %} · ⚔️ 누르면 도전장{% endif %}</p>
+    {% else %}<p class="mt-1 text-[11px] text-stone-500">시즌 최고 점수 (만점 {{ max_score }}점){% if me %} · ⚔️ 누르면 도전장{% endif %}</p>{% endif %}
     {% if rows %}
     <ol class="mt-2 divide-y divide-stone-100">
-      {% for r in rows[:top_n] %}
-      <li class="flex items-center gap-2 py-2 text-sm {{ 'bg-orange-50 -mx-2 px-2 rounded-lg font-bold' if me and r.member.id == me.id }}">
-        <span class="w-6 text-center shrink-0">{{ {1: '🥇', 2: '🥈', 3: '🥉'}.get(r.rank, r.rank) }}</span>
-        {{ bn(r.member) }}<span class="truncate flex-1">{{ r.member.name }}</span>
-        <span class="tabular-nums font-bold text-orange-600">{{ r.score }}<span class="text-[10px] font-normal text-stone-400">점</span></span>
-      </li>
-      {% endfor %}
-      {% if mine and mine not in rows[:top_n] %}
-      <li class="flex items-center gap-2 py-2 text-sm bg-orange-50 -mx-2 px-2 rounded-lg font-bold">
-        <span class="w-6 text-center shrink-0">{{ mine.rank }}</span>
-        {{ bn(mine.member) }}<span class="truncate flex-1">{{ mine.member.name }}</span>
-        <span class="tabular-nums text-orange-600">{{ mine.score }}<span class="text-[10px] font-normal text-stone-400">점</span></span>
-      </li>
-      {% endif %}
+      {% for r in rows %}{{ rank_row(r, '' if loop.index <= top_n else 'rk-more hidden') }}{% endfor %}
+      {% if mine and mine not in rows[:top_n] %}{{ rank_row(mine, 'rk-mine') }}{% endif %}
     </ol>
+    {% if rows|length > top_n %}
+    <button type="button" class="mt-2 w-full rounded-lg bg-stone-100 py-2 text-xs font-semibold text-stone-600 active:bg-stone-200"
+            onclick="arcadeMore(this)" data-more="전체 순위 보기 ({{ rows|length }}명) ▾" data-less="접기 ▴">전체 순위 보기 ({{ rows|length }}명) ▾</button>
+    {% endif %}
     {% else %}
     <p class="mt-3 text-sm text-stone-500">아직 기록이 없어요. 첫 {{ '주간 ' if key == 'week' }}슛왕이 되어보세요! 🏀</p>
     {% endif %}
   </div>
   {% endfor %}
 {% endcall %}
+</div>
