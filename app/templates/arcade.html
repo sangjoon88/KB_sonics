@@ -6,7 +6,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-  #stage { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #stage { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #stage.playing { touch-action: none; }   /* 게임 중에만 스크롤 막기 (arcade.js 가 playing 클래스를 붙인다) */
   #court { image-rendering: pixelated; image-rendering: crisp-edges; width: 100%; height: auto; display: block; }
   .pixel { font-family: "Press Start 2P", ui-monospace, monospace; }
 </style>
@@ -82,5 +83,5 @@
 </script>
 <script type="application/json" id="arcade-cfg">{{ {"seconds": game_seconds, "racks": racks, "balls": balls,
   "num": me.back_number or "", "pos": me.position or "F", "ghosts": ghosts}|tojson }}</script>
-<script src="/arcade.js?v=5" defer></script>
+<script src="/arcade.js?v=6" defer></script>
 {% endblock %}
