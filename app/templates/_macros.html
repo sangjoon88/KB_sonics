@@ -25,7 +25,7 @@
 
 {# 팀 이름: A = RED (빨강 네모), B = WHITE (흰 네모). 데이터는 A/B 그대로, 화면 표기만 (글씨는 .team-label) #}
 {% macro team_name(side) -%}
-<span class="team-label inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm {{ 'bg-[#DC2626]' if side|upper == 'A' else 'bg-white ring-1 ring-stone-300' }}"></span>{{ 'RED' if side|upper == 'A' else 'WHITE' }}</span>
+<span class="team-label inline-flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm {{ 'bg-[#DC2626]' if side|upper == 'A' else 'bg-[#FFFFFF] ring-1 ring-stone-300' }}"></span>{{ 'RED' if side|upper == 'A' else 'WHITE' }}</span>
 {%- endmacro %}
 
 {# 게스트 키 (모든 이용자에게 표시) #}
