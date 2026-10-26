@@ -1,4 +1,4 @@
-"""참여 지표 (승패와 무관, 모든 멤버에게 공개): 연속 출석, 월간 개근상, 얼리버드, 마일스톤 배지.
+"""참여 지표 (승패와 무관, 모든 멤버에게 공개): 연속 출석, 월간 개근상, 투표 1등, 마일스톤 배지.
 
 출석 = 그날 결과가 입력된 게임을 1게임 이상 뛴 것 (stats.compute_stats 와 같은 기준).
 연속 출석은 '경기가 열린 날' 기준으로 센다 — 경기가 없는 주는 연속을 끊지 않는다.
@@ -15,6 +15,7 @@ from app.models import ClubSession, Game, Member
 
 PERFECT_MONTH_MIN_SESSIONS = 2   # 개근상: 그달 경기가 2번 이상 열린 달만
 RATE_BADGE_MIN_SESSIONS = 5      # 시즌 출석률 배지: 시즌 경기가 5번 이상 열린 뒤부터
+FIRST_VOTE_FROM = date(2026, 11, 8)   # 투표 1등: 이 날짜 경기부터 집계 (그 전 경기는 기능 도입 전에 투표가 시작됨)
 
 
 @dataclass(frozen=True)
@@ -35,8 +36,8 @@ BADGES = [
     BadgeDef("s12", "☄️", "12연속 출석", "경기 12번 연속 출석"),
     BadgeDef("perfect", "📅", "개근상", "한 달 경기에 모두 출석"),
     BadgeDef("rate80", "💯", "출석률 80%", "시즌 출석률 80% 이상"),
-    BadgeDef("eb1", "🐦", "얼리버드", "가장 먼저 투표"),
-    BadgeDef("eb5", "🦅", "얼리버드 5회", "가장 먼저 투표 5번"),
+    BadgeDef("eb1", "⚡", "투표 1등", "경기 투표를 가장 먼저 했어요"),
+    BadgeDef("eb5", "🚀", "투표 1등 5회", "투표 1등 5번"),
 ]
 
 
@@ -49,7 +50,7 @@ class Engagement:
     games_all: int = 0
     season_attended: int = 0
     season_held: int = 0
-    early_birds: int = 0           # 이번 시즌 얼리버드 횟수
+    early_birds: int = 0           # 이번 시즌 투표 1등 횟수
     early_birds_all: int = 0
     perfect_months: list[tuple[int, int]] = field(default_factory=list)   # 전체 기간 (년, 월)
     month_progress: tuple[int, int] | None = None    # 이번 달 (출석, 열린 경기)
@@ -76,7 +77,7 @@ class MonthAward:
 class EngagementData:
     by_member: dict[int, Engagement]
     months: list[MonthAward]       # 이번 시즌, 최근 달이 앞
-    early_bird_of: dict[int, Member]   # session_id → 그 경기 얼리버드
+    early_bird_of: dict[int, Member]   # session_id → 그 경기 투표 1등
 
 
 def compute_engagement(db: Session, season: int, today: date) -> EngagementData:
@@ -136,9 +137,11 @@ def compute_engagement(db: Session, season: int, today: date) -> EngagementData:
             months.append(MonthAward(ym[0], ym[1], len(ss), done, [members[mid] for mid in perfect]))
     months.reverse()
 
-    # 얼리버드: 그 경기에 가장 먼저 투표한 멤버 (대리 투표·게스트 제외, 처음 투표 시각 기준)
+    # 투표 1등: 그 경기에 가장 먼저 투표한 멤버 (대리 투표·게스트 제외, 처음 투표 시각 기준)
     early_bird_of: dict[int, Member] = {}
     for s in sessions:
+        if s.date < FIRST_VOTE_FROM:
+            continue
         cands = [a for a in s.attendances
                  if a.first_voted_at is not None and a.proxy_by is None and a.member_id in members]
         if not cands:

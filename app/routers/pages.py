@@ -543,7 +543,7 @@ def stats_page(request: Request, sort: str = "attendance", season: int | None = 
     if sort == "attstreak":          # 🔥 지금 이어지는 연속 출석
         rows = sorted([r for r in stats.values() if eng.by_member.get(r.member_id) and eng.by_member[r.member_id].cur_streak],
                       key=lambda r: (-eng.by_member[r.member_id].cur_streak, -eng.by_member[r.member_id].best_streak, r.name))
-    elif sort == "earlybird":        # 🐦 이번 시즌 얼리버드 횟수
+    elif sort == "earlybird":        # ⚡ 이번 시즌 투표 1등 횟수
         rows = sorted([r for r in stats.values() if eng.by_member.get(r.member_id) and eng.by_member[r.member_id].early_birds],
                       key=lambda r: (-eng.by_member[r.member_id].early_birds, r.name))
     else:

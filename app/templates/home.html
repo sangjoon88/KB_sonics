@@ -43,7 +43,7 @@
       </div>
     </div>
     {% endif %}
-    {% if early_bird %}<p class="mt-2 text-xs text-stone-500">🐦 이번 경기 얼리버드: <b class="text-stone-700">{{ early_bird.name }}</b></p>{% endif %}
+    {% if early_bird %}<p class="mt-2 text-xs text-stone-500">⚡ 이번 경기 투표 1등: <b class="text-stone-700">{{ early_bird.name }}</b></p>{% endif %}
     {% if my_vote and my_vote.vote %}
       <p class="mt-3 text-sm">내 투표: <b>{{ VOTE_LABEL.get(my_vote.vote, my_vote.vote) }}</b>{% if my_vote.vote == 'early' and my_vote.leave_time %} <span class="text-[10px] text-amber-700">⏰{{ my_vote.leave_time }}</span>{% endif %}{% if my_vote.proxy_by %} <span class="text-xs text-stone-500">(운영진 대리 입력)</span>{% endif %}</p>
     {% elif voting_open %}
@@ -156,7 +156,7 @@
         </ol>
       </div>
       {% endfor %}
-      {% for title, rows, fmt, empty in [('🔥 연속 출석', top_attstreak, 'cur', '연속 출석 중인 사람이 아직 없어요'), ('🐦 얼리버드', top_earlybird, 'eb', '투표가 열리면 가장 먼저 투표해 보세요')] %}
+      {% for title, rows, fmt, empty in [('🔥 연속 출석', top_attstreak, 'cur', '연속 출석 중인 사람이 아직 없어요'), ('⚡ 투표 1등', top_earlybird, 'eb', '11/8 경기부터 · 투표 열리면 제일 먼저!')] %}
       <div>
         <div class="text-xs text-stone-500 mb-1">{{ title }}</div>
         <ol class="space-y-1">

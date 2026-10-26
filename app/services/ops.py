@@ -375,7 +375,7 @@ def vote(db: Session, s: ClubSession, member: Member, v: str, leave_time: str | 
     a.leave_time = leave
     a.voted_at = now_kst()
     if a.first_voted_at is None:
-        a.first_voted_at = a.voted_at   # 얼리버드: 투표를 바꿔도 처음 투표한 시각 기준
+        a.first_voted_at = a.voted_at   # 투표 1등: 투표를 바꿔도 처음 투표한 시각 기준
     a.proxy_by = None  # 본인이 직접 투표하면 대리 표시 해제
     db.commit()
     db.expire(s, ["attendances"])  # expire_on_commit=False 라서 목록을 다시 읽게 한다

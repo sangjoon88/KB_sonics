@@ -93,7 +93,7 @@ class Attendance(Base):
     proxy_by: Mapped[int | None] = mapped_column(ForeignKey("members.id"))  # 대리 투표한 운영진
     checked_in: Mapped[bool] = mapped_column(Boolean, default=False)
     voted_at: Mapped[datetime | None] = mapped_column(DateTime)
-    first_voted_at: Mapped[datetime | None] = mapped_column(DateTime)   # 본인이 처음 투표한 시각 (얼리버드)
+    first_voted_at: Mapped[datetime | None] = mapped_column(DateTime)   # 본인이 처음 투표한 시각 (투표 1등)
 
     session: Mapped[ClubSession] = relationship(back_populates="attendances")
     member: Mapped[Member] = relationship(foreign_keys=[member_id])

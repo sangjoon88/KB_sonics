@@ -9,7 +9,7 @@
 {% set tiles = [('출석', st.attended ~ '회'), ('출석률', ((st.attendance_rate*100)|round|int) ~ '%'), ('경기', st.games),
                ('🔥 연속 출석', (eng.cur_streak ~ '회') if eng and eng.cur_streak else '-'),
                ('최장 연속', (eng.best_streak ~ '회') if eng and eng.best_streak else '-'),
-               ('🐦 얼리버드', (eng.early_birds ~ '번') if eng and eng.early_birds else '-')] %}
+               ('⚡ 투표 1등', (eng.early_birds ~ '번') if eng and eng.early_birds else '-')] %}
 {% if show_results %}{% set tiles = tiles + [('승률', (((st.win_rate*100)|round|int) ~ '%') if st.games else '-'), ('전적', st.wins ~ '승 ' ~ st.losses ~ '패' ~ ((' ' ~ st.draws ~ '무') if st.draws else '')), ('최장 연승', st.best_streak)] %}{% endif %}
 <div class="grid grid-cols-3 gap-2">
   {% for label, value in tiles %}

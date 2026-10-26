@@ -1126,7 +1126,7 @@ def test_engagement_streak_perfect_month_earlybird_badges(client, db):
     assert sept.done and {m.name for m in sept.members} == {"꾸준이", "새벽이"}
     assert {"first", "s4", "perfect"} <= ea.earned and "s4" not in eb.earned
 
-    # 얼리버드: 처음 투표 기준 (나중에 바꿔도 유지), 대리 투표 제외
+    # 투표 1등: 처음 투표 기준 (나중에 바꿔도 유지), 대리 투표 제외
     s = ops.create_session(db, admin, _dt.date(2099, 1, 3))
     ops.proxy_vote(db, admin, s, b.id, "yes")                          # 대리 투표가 제일 먼저 → 제외
     ops.vote(db, s, c, "yes")                                          # 본인 투표 1등
@@ -1136,6 +1136,10 @@ def test_engagement_streak_perfect_month_earlybird_badges(client, db):
     data = compute_engagement(db, 2099, _dt.date(2099, 1, 1))
     assert data.early_bird_of[s.id].name == "새벽이"
     assert data.by_member[c.id].early_birds == 1 and "eb1" in data.by_member[c.id].earned
+    old = ops.create_session(db, admin, _dt.date(2026, 11, 1))        # 집계 시작(11/8) 전 경기는 제외
+    ops.vote(db, old, a, "yes")
+    db.expire_all()
+    assert old.id not in compute_engagement(db, 2026, _dt.date(2026, 10, 26)).early_bird_of
 
     # 화면: 홈 랭킹·기록 탭·내 기록 배지
     import app.config as cfg
@@ -1144,7 +1148,7 @@ def test_engagement_streak_perfect_month_earlybird_badges(client, db):
     try:
         _login_as(client, db, a)
         home = client.get("/").text
-        assert "🔥 연속 출석" in home and "🐦 얼리버드" in home
+        assert "🔥 연속 출석" in home and "⚡ 투표 1등" in home
         st = client.get("/stats?sort=attstreak").text
         assert "꾸준이" in st and "월간 개근상" in st and "도전 중" in st
         me = client.get("/me").text
