@@ -202,12 +202,13 @@
     <div class="sp-ball">🏀</div>
   </div>
   <script>
-    // 탭 이동·새로고침·뒤로가기에서는 띄우지 않는다. 최소 1.5초(이미지가 뜬 뒤), 최대 3초, 누르면 바로 닫힘.
+    // 바깥에서 열 때·새로고침 때 띄운다 (탭 이동·뒤로가기는 제외). 이미지가 뜬 뒤 2.5초, 최대 4초, 누르면 바로 닫힘.
     (function () {
       var sp = document.getElementById('kb-splash'), inside = false, nav = null;
       try { inside = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) {}
       try { nav = performance.getEntriesByType('navigation')[0]; } catch (e) {}
-      if (inside || (nav && (nav.type === 'reload' || nav.type === 'back_forward'))) { sp.remove(); return; }
+      var reload = !!nav && nav.type === 'reload';
+      if (!reload && (inside || (nav && nav.type === 'back_forward'))) { sp.remove(); return; }
       sp.hidden = false;
       var t0 = Date.now(), done = false, img = sp.querySelector('img');
       function hide() {
@@ -215,9 +216,9 @@
         sp.classList.add('out');
         setTimeout(function () { sp.remove(); }, 500);
       }
-      function ready() { setTimeout(hide, Math.max(0, 1500 - (Date.now() - t0))); }
+      function ready() { setTimeout(hide, Math.max(0, 2500 - (Date.now() - t0))); }
       if (img.complete && img.naturalWidth) ready(); else { img.addEventListener('load', ready); img.addEventListener('error', hide); }
-      setTimeout(hide, 3000);
+      setTimeout(hide, 4000);
       sp.addEventListener('click', hide);
     })();
   </script>
