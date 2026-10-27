@@ -1071,7 +1071,7 @@ def test_no_member_route_exposes_results(client, db):
             continue
         path = route.path
         if path.startswith("/admin") or path in ("/api/docs", "/api/openapi.json", "/setup", "/health",
-                                                 "/arcade.js", "/favicon.svg", "/logout"):   # 정적 파일·로그아웃 제외
+                                                 "/arcade.js", "/favicon.svg", "/splash.jpg", "/logout"):   # 정적 파일·로그아웃 제외
             continue
         if path.startswith("/api/admin"):
             continue

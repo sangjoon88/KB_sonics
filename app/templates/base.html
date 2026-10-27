@@ -175,8 +175,52 @@
     html.dark input::placeholder, html.dark textarea::placeholder { color: var(--faint); }
     html.dark .shadow-sm { box-shadow: none; }
   </style>
+  <style>
+    /* 스플래시: 앱을 바깥에서 열 때만 (링크·홈 화면 아이콘·주소 입력). 팀 테마 색을 따른다 */
+    #kb-splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 22px; padding: 24px; cursor: pointer; transition: opacity .45s ease;
+      background: radial-gradient(circle at 50% 38%, rgb(var(--deep)) 0%, rgb(var(--o900)) 78%); }
+    #kb-splash[hidden] { display: none; }
+    #kb-splash.out { opacity: 0; pointer-events: none; }
+    #kb-splash .sp-panel { width: min(86vw, 420px); background: #fff; padding: 6px; border-radius: 4px;
+      box-shadow: 0 0 0 3px rgb(var(--bright)), 0 18px 44px rgba(0, 0, 0, .5); transform: rotate(-2deg);
+      animation: kbSpPanel .7s cubic-bezier(.2, 1.3, .4, 1) both; }
+    #kb-splash .sp-panel img { display: block; width: 100%; height: auto; aspect-ratio: 852 / 652; background: #f4f1ea; }
+    #kb-splash .sp-logo { font-weight: 900; font-size: 30px; letter-spacing: .06em; color: rgb(var(--logo));
+      text-shadow: 0 2px 0 rgba(0, 0, 0, .35); animation: kbSpUp .5s .3s both; }
+    #kb-splash .sp-ball { font-size: 26px; line-height: 1; animation: kbSpUp .4s .45s both, kbSpBounce .5s .85s infinite alternate cubic-bezier(.5, 0, .5, 1); }
+    @keyframes kbSpPanel { from { opacity: 0; transform: scale(.82) rotate(-7deg); } to { opacity: 1; transform: rotate(-2deg); } }
+    @keyframes kbSpUp { from { opacity: 0; transform: translateY(10px); } }
+    @keyframes kbSpBounce { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+    @media (prefers-reduced-motion: reduce) { #kb-splash .sp-panel, #kb-splash .sp-logo, #kb-splash .sp-ball { animation: none; } }
+  </style>
 </head>
 <body class="text-stone-900 min-h-screen pb-24">
+  <div id="kb-splash" hidden aria-hidden="true">
+    <div class="sp-panel"><img src="/splash.jpg" alt="" width="852" height="652" decoding="async"></div>
+    <div class="sp-logo">KB SONICS</div>
+    <div class="sp-ball">🏀</div>
+  </div>
+  <script>
+    // 탭 이동·새로고침·뒤로가기에서는 띄우지 않는다. 최소 1.5초(이미지가 뜬 뒤), 최대 3초, 누르면 바로 닫힘.
+    (function () {
+      var sp = document.getElementById('kb-splash'), inside = false, nav = null;
+      try { inside = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) {}
+      try { nav = performance.getEntriesByType('navigation')[0]; } catch (e) {}
+      if (inside || (nav && (nav.type === 'reload' || nav.type === 'back_forward'))) { sp.remove(); return; }
+      sp.hidden = false;
+      var t0 = Date.now(), done = false, img = sp.querySelector('img');
+      function hide() {
+        if (done) return; done = true;
+        sp.classList.add('out');
+        setTimeout(function () { sp.remove(); }, 500);
+      }
+      function ready() { setTimeout(hide, Math.max(0, 1500 - (Date.now() - t0))); }
+      if (img.complete && img.naturalWidth) ready(); else { img.addEventListener('load', ready); img.addEventListener('error', hide); }
+      setTimeout(hide, 3000);
+      sp.addEventListener('click', hide);
+    })();
+  </script>
   <header class="site-header text-white">
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
       <a href="/" class="site-logo font-black text-lg tracking-tight">🏀 KB SONICS</a>

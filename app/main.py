@@ -37,6 +37,11 @@ def favicon():
     return FileResponse(PUBLIC_DIR / "favicon.svg", media_type="image/svg+xml")
 
 
+@app.get("/splash.jpg", include_in_schema=False)
+def splash_jpg():
+    return FileResponse(PUBLIC_DIR / "splash.jpg", media_type="image/jpeg")
+
+
 @app.get("/arcade.js", include_in_schema=False)
 def arcade_js():
     return FileResponse(PUBLIC_DIR / "arcade.js", media_type="text/javascript")
