@@ -8,7 +8,7 @@
 {%- endmacro %}
 
 {% macro balance_badge(label) -%}
-{% if label %}<span class="text-xs px-2 py-0.5 rounded-full {{ {'양호':'bg-emerald-100 text-emerald-700','보통':'bg-amber-100 text-amber-700','주의':'bg-red-100 text-red-700'}[label] }}">밸런스 {{ label }}</span>{% endif %}
+{% if label %}<span class="shrink-0 whitespace-nowrap text-xs px-2 py-0.5 rounded-full {{ {'양호':'bg-emerald-100 text-emerald-700','보통':'bg-amber-100 text-amber-700','주의':'bg-red-100 text-red-700'}[label] }}">밸런스 {{ label }}</span>{% endif %}
 {%- endmacro %}
 
 {% macro btn_cls(kind='primary') -%}
@@ -72,7 +72,7 @@
 {% if m.is_guest %}<span class="absolute -top-1.5 right-1 pointer-events-none">{{ guest_tag(m, small=True) }}</span>{% endif %}
 {%- endmacro %}
 
-{# 팀 명단용: 조퇴 시각을 칸 안 오른쪽 끝에 (이름 뒤, 이름이 길면 이름이 줄어든다) #}
-{% macro leave_corner(t) -%}
-{% if t %}<span class="shrink-0 whitespace-nowrap text-[10px] leading-[14px] px-[3px] -mr-1 rounded bg-amber-100 text-amber-800 font-semibold tabular-nums tracking-tighter" title="{{ t }} 조퇴"><span class="text-[8px]">⏰</span>{{ t }}</span>{% endif %}
+{# 팀 명단용: 조퇴 시각을 이름 아래 작은 줄로 (이름이 칸 폭을 다 쓰도록 — 좁은 폰·큰 글자에서도 안 잘리게) #}
+{% macro leave_line(t) -%}
+{% if t %}<span class="block truncate text-[10px] leading-[12px] font-semibold text-amber-700 tabular-nums">⏰{{ t }} 조퇴</span>{% endif %}
 {%- endmacro %}
