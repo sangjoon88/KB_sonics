@@ -1,4 +1,4 @@
-{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, guest_height, bn, leave, team_name, bn_or_height, guest_corner, leave_line %}
+{% from "_macros.html" import card, pos_badge, balance_badge, guest_tag, guest_height, bn, leave, team_name, bn_or_height, guest_corner, leave_corner %}
 <div class="space-y-4">
 {% for item in games %}{% set g = item.g %}
   {% call card() %}
@@ -24,7 +24,7 @@
           {% if show_results and g.winner == side %}<span class="text-xs">🏆</span>{% endif %}</div>
         <ul class="space-y-2">
           {% for m in members %}
-          <li class="relative flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ bn_or_height(m) }}<span class="shrink-0">{{ pos_badge(m.position, slot=True) }}</span><span class="flex-1 min-w-0"><span class="block truncate">{{ m.name }}</span>{{ leave_line(early.get(m.id) if early) }}</span>{{ guest_corner(m) }}</li>
+          <li class="relative flex items-center gap-1 text-sm bg-{{ color }}-50 rounded px-2 py-1">{{ bn_or_height(m) }}<span class="shrink-0">{{ pos_badge(m.position, slot=True) }}</span><span class="truncate flex-1">{{ m.name }}</span>{{ guest_corner(m) }}{{ leave_corner(early.get(m.id) if early) }}</li>
           {% endfor %}
         </ul>
       </div>
